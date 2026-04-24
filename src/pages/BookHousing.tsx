@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Home, MapPin, DollarSign } from 'lucide-react';
+import { openWhatsApp } from '../utils/whatsapp';
 
 interface FormData {
     type: string;
@@ -28,10 +29,17 @@ export function BookHousing() {
 
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        console.log('Housing booking form submitted:', formData);
         setSubmitted(true);
         setTimeout(() => {
-            alert('Request submitted successfully! We will contact you soon.');
+            openWhatsApp(
+                [
+                    'Hello Your Kigali Bestie, I need help booking housing (paid service).',
+                    `Type: ${formData.type}`,
+                    `Location: ${formData.location}`,
+                    `Bedrooms: ${formData.rooms}`,
+                    `Budget: ${formData.budget} RWF`,
+                ].join('\n')
+            );
             setSubmitted(false);
             setFormData({ type: '', location: '', rooms: '', budget: '' });
         }, 500);
@@ -41,7 +49,7 @@ export function BookHousing() {
         <main>
             {/* Header */}
             <section className="bg-black border-b border-primary py-12 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-7xl mx-auto">
+                <div className="ykb-container">
                     <div className="flex items-center space-x-3 mb-4">
                         <Home className="w-8 h-8 text-primary" />
                         <h1 className="text-4xl md:text-5xl font-serif font-bold text-primary">
@@ -55,9 +63,9 @@ export function BookHousing() {
             </section>
 
             {/* Form Section */}
-            <section className="py-16 px-4 sm:px-6 lg:px-8 bg-dark-light">
+            <section className="ykb-section px-4 sm:px-6 lg:px-8 bg-dark-light">
                 <div className="max-w-2xl mx-auto">
-                    <div className="bg-black border border-primary p-8">
+                    <div className="ykb-surface p-8">
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {/* Housing Type */}
                             <div>
@@ -70,7 +78,7 @@ export function BookHousing() {
                                     value={formData.type}
                                     onChange={handleChange}
                                     required
-                                    className="w-full px-4 py-3 border border-primary bg-dark-light text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                                    className="ykb-field"
                                 >
                                     <option value="">Select an option</option>
                                     <option value="hotel">Hotel</option>
@@ -94,7 +102,7 @@ export function BookHousing() {
                                         onChange={handleChange}
                                         placeholder="e.g., Kigali City Center, Kacyiru, Remera"
                                         required
-                                        className="w-full pl-10 pr-4 py-3 border border-primary bg-dark-light text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary"
+                                        className="ykb-field pl-10"
                                     />
                                 </div>
                             </div>
@@ -115,7 +123,7 @@ export function BookHousing() {
                                         placeholder="e.g., 1, 2, 3"
                                         min="1"
                                         required
-                                        className="w-full pl-10 pr-4 py-3 border border-primary bg-dark-light text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary"
+                                        className="ykb-field pl-10"
                                     />
                                 </div>
                             </div>
@@ -135,7 +143,7 @@ export function BookHousing() {
                                         onChange={handleChange}
                                         placeholder="e.g., 500000 - 1000000"
                                         required
-                                        className="w-full pl-10 pr-4 py-3 border border-primary bg-dark-light text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary"
+                                        className="ykb-field pl-10"
                                     />
                                 </div>
                             </div>
@@ -144,10 +152,7 @@ export function BookHousing() {
                             <button
                                 type="submit"
                                 disabled={submitted}
-                                className={`w-full py-3 px-6 font-semibold text-black transition-colors ${submitted
-                                    ? 'bg-gray-600 cursor-not-allowed'
-                                    : 'bg-primary hover:bg-secondary'
-                                    }`}
+                                className={`w-full ykb-button-solid py-3 px-6 ${submitted ? 'opacity-60 cursor-not-allowed hover:bg-primary' : ''}`}
                             >
                                 {submitted ? 'Submitting...' : 'Submit Housing Request'}
                             </button>
@@ -155,7 +160,7 @@ export function BookHousing() {
                     </div>
 
                     {/* Info Box */}
-                    <div className="mt-8 bg-black border border-primary p-6">
+                    <div className="mt-8 ykb-card p-6">
                         <h3 className="font-serif font-semibold text-primary mb-3">What happens next?</h3>
                         <ul className="space-y-2 text-gray-400">
                             <li>✓ We receive your housing preferences</li>

@@ -3,18 +3,130 @@
 @source "../index.html";
 @source "./**/*.{js,ts,jsx,tsx}";
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 #root {
   width: 100%;
+  min-height: 100vh;
+}
+
+@layer base {
+  body {
+    @apply bg-black text-white antialiased leading-relaxed;
+  }
+
+  p {
+    @apply leading-relaxed;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply tracking-tight;
+  }
+}
+
+@layer components {
+  .ykb-container {
+    @apply max-w-7xl mx-auto px-5 sm:px-6 lg:px-8;
+  }
+
+  .ykb-section {
+    @apply py-20 sm:py-28;
+  }
+
+  .ykb-surface {
+    @apply rounded-2xl border border-primary/20 bg-gradient-to-b from-dark-light/70 to-black/40 backdrop-blur-sm;
+  }
+
+  .ykb-card {
+    @apply rounded-2xl border border-primary/20 bg-gradient-to-b from-dark-light/70 to-black/40 backdrop-blur-sm p-7 sm:p-8 shadow-lg shadow-black/20 transition-transform duration-300;
+  }
+
+  .ykb-card-hover {
+    @apply hover:-translate-y-1 hover:border-primary/40;
+  }
+
+  .ykb-button {
+    @apply inline-flex items-center justify-center gap-2 font-semibold transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black;
+  }
+
+  .ykb-button-primary {
+    @apply inline-flex items-center justify-center gap-2 font-semibold transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-full bg-gradient-to-r from-primary to-secondary text-black hover:from-secondary hover:to-primary shadow-lg shadow-black/25;
+  }
+
+  .ykb-button-solid {
+    @apply inline-flex items-center justify-center gap-2 font-semibold transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-full bg-primary text-black hover:bg-secondary;
+  }
+
+  .ykb-button-outline {
+    @apply inline-flex items-center justify-center gap-2 font-semibold transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-full border-2 border-primary/50 text-primary hover:bg-primary/10;
+  }
+
+  .ykb-field {
+    @apply w-full rounded-xl border border-primary/30 bg-black/40 px-4 py-3 text-white placeholder-gray-500 focus:border-primary/60 focus:ring-2 focus:ring-primary/30;
+  }
+}
+
+@keyframes gradient {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% auto;
+  animation: gradient 3s linear infinite;
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+
+.animate-scroll {
+  animation: scroll 1.5s ease-in-out infinite;
+}
+
+.bg-grid-pattern {
+  background-image: linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.05) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  will-change: opacity, transform;
+}
+
+.animate-on-scroll.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 @keyframes fadeInUp {
@@ -43,10 +155,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #FFD700, #FFA500);
+  background: linear-gradient(to bottom, #D4A574, #A0826D);
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #FFA500, #FFD700);
+  background: linear-gradient(to bottom, #A0826D, #D4A574);
 }

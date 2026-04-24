@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react';
 import { Languages } from 'lucide-react';
+import { openWhatsApp } from '../utils/whatsapp';
 
 interface FormData {
     language: string;
@@ -24,10 +25,15 @@ export function BookTranslator() {
 
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        console.log('Translator booking form submitted:', formData);
         setSubmitted(true);
         setTimeout(() => {
-            alert('Translation request submitted! We will contact you shortly.');
+            openWhatsApp(
+                [
+                    'Hello Your Kigali Bestie, I would like to book a translator (paid service).',
+                    `Language: ${formData.language}`,
+                    `Duration: ${formData.duration}`,
+                ].join('\n')
+            );
             setSubmitted(false);
             setFormData({ language: '', duration: '' });
         }, 500);
@@ -37,7 +43,7 @@ export function BookTranslator() {
         <main>
             {/* Header */}
             <section className="bg-black border-b border-primary py-12 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-7xl mx-auto">
+                <div className="ykb-container">
                     <div className="flex items-center space-x-3 mb-4">
                         <Languages className="w-8 h-8 text-primary" />
                         <h1 className="text-4xl md:text-5xl font-serif font-bold text-primary">
@@ -51,9 +57,9 @@ export function BookTranslator() {
             </section>
 
             {/* Form Section */}
-            <section className="py-16 px-4 sm:px-6 lg:px-8 bg-dark-light">
+            <section className="ykb-section px-4 sm:px-6 lg:px-8 bg-dark-light">
                 <div className="max-w-2xl mx-auto">
-                    <div className="bg-black border border-primary p-8">
+                    <div className="ykb-surface p-8">
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {/* Language Selection */}
                             <div>
@@ -66,7 +72,7 @@ export function BookTranslator() {
                                     value={formData.language}
                                     onChange={handleChange}
                                     required
-                                    className="w-full px-4 py-3 border border-primary bg-dark-light text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                                    className="ykb-field"
                                 >
                                     <option value="">Select a language</option>
                                     <option value="english">English</option>
@@ -89,9 +95,9 @@ export function BookTranslator() {
                                             checked={formData.duration === 'hourly'}
                                             onChange={handleChange}
                                             required
-                                            className="w-5 h-5 text-primary border-primary bg-dark-light"
+                                            className="w-5 h-5 text-primary border-primary bg-dark-light focus:ring-primary/40"
                                         />
-                                        <span className="text-gray-400 font-medium">Hourly</span>
+                                        <span className="text-gray-300/80 font-medium">Hourly</span>
                                     </label>
                                     <label className="flex items-center space-x-3 cursor-pointer">
                                         <input
@@ -101,9 +107,9 @@ export function BookTranslator() {
                                             checked={formData.duration === 'weekly'}
                                             onChange={handleChange}
                                             required
-                                            className="w-5 h-5 text-primary border-primary bg-dark-light"
+                                            className="w-5 h-5 text-primary border-primary bg-dark-light focus:ring-primary/40"
                                         />
-                                        <span className="text-gray-400 font-medium">Weekly</span>
+                                        <span className="text-gray-300/80 font-medium">Weekly</span>
                                     </label>
                                     <label className="flex items-center space-x-3 cursor-pointer">
                                         <input
@@ -113,9 +119,9 @@ export function BookTranslator() {
                                             checked={formData.duration === 'monthly'}
                                             onChange={handleChange}
                                             required
-                                            className="w-5 h-5 text-primary border-primary bg-dark-light"
+                                            className="w-5 h-5 text-primary border-primary bg-dark-light focus:ring-primary/40"
                                         />
-                                        <span className="text-gray-400 font-medium">Monthly</span>
+                                        <span className="text-gray-300/80 font-medium">Monthly</span>
                                     </label>
                                 </div>
                             </div>
@@ -124,10 +130,7 @@ export function BookTranslator() {
                             <button
                                 type="submit"
                                 disabled={submitted}
-                                className={`w-full py-3 px-6 font-semibold text-black transition-colors ${submitted
-                                    ? 'bg-gray-600 cursor-not-allowed'
-                                    : 'bg-primary hover:bg-secondary'
-                                    }`}
+                                className={`w-full ykb-button-solid py-3 px-6 ${submitted ? 'opacity-60 cursor-not-allowed hover:bg-primary' : ''}`}
                             >
                                 {submitted ? 'Submitting...' : 'Book Translator Now'}
                             </button>
@@ -136,7 +139,7 @@ export function BookTranslator() {
 
                     {/* Service Info */}
                     <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-black border border-primary p-6">
+                        <div className="ykb-card p-6">
                             <h3 className="font-serif font-semibold text-primary mb-3">Why Our Translators?</h3>
                             <ul className="space-y-2 text-gray-400 text-sm">
                                 <li>✓ Native speakers with cultural knowledge</li>
@@ -146,7 +149,7 @@ export function BookTranslator() {
                             </ul>
                         </div>
 
-                        <div className="bg-black border border-primary p-6">
+                        <div className="ykb-card p-6">
                             <h3 className="font-serif font-semibold text-primary mb-3">What We Cover</h3>
                             <ul className="space-y-2 text-gray-400 text-sm">
                                 <li>✓ Business meetings and negotiations</li>

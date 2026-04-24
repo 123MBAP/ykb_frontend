@@ -9,7 +9,7 @@ interface GuideCardProps {
 
 function GuideCard({ icon, title, items }: GuideCardProps) {
     return (
-        <div className="bg-dark-light border border-primary p-6">
+        <div className="ykb-card ykb-card-hover">
             <div className="flex items-center space-x-3 mb-4">
                 <div className="text-primary">{icon}</div>
                 <h3 className="text-xl font-serif font-semibold text-primary">{title}</h3>
@@ -18,7 +18,7 @@ function GuideCard({ icon, title, items }: GuideCardProps) {
                 {items.map((item, idx) => (
                     <li key={idx} className="flex items-start space-x-3">
                         <span className="text-primary font-bold">•</span>
-                        <span className="text-gray-400">{item}</span>
+                        <span className="text-gray-300/80 leading-relaxed">{item}</span>
                     </li>
                 ))}
             </ul>
@@ -33,7 +33,7 @@ export function StarterGuide() {
         <main>
             {/* Header */}
             <section className="bg-black border-b border-primary py-12 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-7xl mx-auto">
+                <div className="ykb-container">
                     <h1 className="text-4xl md:text-5xl font-serif font-bold text-primary mb-4">
                         Your 24-Hour Starter Guide to Kigali
                     </h1>
@@ -44,8 +44,8 @@ export function StarterGuide() {
             </section>
 
             {/* Content Sections */}
-            <section className="py-16 px-4 sm:px-6 lg:px-8 bg-dark-light">
-                <div className="max-w-7xl mx-auto">
+            <section className="ykb-section px-4 sm:px-6 lg:px-8 bg-dark-light">
+                <div className="ykb-container">
                     {/* First 24 Hours */}
                     <div className="mb-16">
                         <h2 className="text-3xl font-serif font-bold text-primary mb-8">First 24 Hours</h2>
@@ -177,7 +177,7 @@ export function StarterGuide() {
                     {/* Housing */}
                     <div className="mb-16">
                         <h2 className="text-3xl font-serif font-bold text-primary mb-8">Housing & Accommodation</h2>
-                        <div className="bg-black border border-primary p-8">
+                        <div className="ykb-surface p-8">
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                                 <div className="text-center">
                                     <div className="text-4xl mb-2">🏨</div>
@@ -205,7 +205,7 @@ export function StarterGuide() {
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                     navigate('/book-housing');
                                 }}
-                                className="w-full inline-flex items-center justify-center space-x-2 bg-primary hover:bg-secondary text-black font-semibold py-3 px-6 transition-colors"
+                                className="w-full ykb-button-solid py-3 px-6"
                             >
                                 <span>Help Me Book Housing</span>
                                 <ArrowRight className="w-5 h-5" />
