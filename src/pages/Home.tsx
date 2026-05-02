@@ -103,7 +103,7 @@ export function Home() {
                         <h1 className="mt-4 text-3xl font-bold tracking-tight text-primary md:text-4xl lg:text-5xl">
                             You focus on
                             <span className="block bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                                what matters
+                                what matters   we deal with the rest
                             </span>
                         </h1>
 
