@@ -23,19 +23,33 @@ import { AdminTranslators } from './pages/admin/AdminTranslators';
 import { AdminStarterGuide } from './pages/admin/AdminStarterGuide';
 import { RequireAdmin } from './components/RequireAdmin';
 import { AdminLayout } from './pages/admin/AdminLayout';
+import { ScrollToTop } from './components/ScrollToTop';
+import { StarterRequests } from './pages/starter/StarterRequests';
+import { StarterLayout } from './pages/starter/StarterLayout';
+import { StarterDashboard } from './pages/starter/StarterDashboard';
 
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <div className="flex flex-col min-h-screen">
         <Navbar />
-        <div className="flex-grow">
+        <div className="grow">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/guide" element={<StarterGuide />} />
             <Route path="/services" element={<Services />} />
             <Route path="/request" element={<RequestService />} />
-            <Route path="/profile" element={<Profile />} />
+
+            {/* Starter area */}
+            <Route path="/profile" element={<StarterLayout />}>
+              <Route index element={<StarterDashboard />} />
+              <Route path="requests" element={<StarterRequests />} />
+              <Route path="profile" element={<Profile />} />
+            </Route>
+
+            <Route path="/starter/requests" element={<Navigate to="/profile/requests" replace />} />
+
             <Route path="/subscribe" element={<Subscribe />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />

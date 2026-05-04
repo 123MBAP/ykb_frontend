@@ -5,6 +5,7 @@ export type UserRole = 'starter' | 'serviceProvider';
 export type ServiceOffering = {
   name: string;
   price: string;
+  description?: string;
 };
 
 export type RegistrationIdentity = {
@@ -101,6 +102,7 @@ function normalizeServiceOfferings(services: ServiceOffering[]): ServiceOffering
   return services.map((service) => ({
     name: service.name.trim(),
     price: service.price.trim(),
+    description: service.description?.trim() || undefined,
   }));
 }
 

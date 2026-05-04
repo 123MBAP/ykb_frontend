@@ -78,3 +78,86 @@ export async function fetchAdminProviderById(providerId: string): Promise<Backen
 
   return json.provider;
 }
+
+export type BackendAdminRequest = {
+  id: string;
+  description: string;
+  location: string;
+  preferredDate?: string | null;
+  budget?: string | number | null;
+  status: string;
+  adminNotes?: string | null;
+  customerNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+  };
+};
+
+export type BackendRequestStatus = 'PENDING' | 'IN_REVIEW' | 'RESOLVED' | 'CANCELLED';
+
+export async function fetchAdminRequests(): Promise<BackendAdminRequest[]> {
+  requireAdminSession();
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/admin/requests`, {
+      method: 'GET',
+      headers: {
+        ...getBackendAuthHeaders(),
+      },
+    });
+  } catch {
+    throw new BackendAuthError('Could not reach the backend. Is it running?', 0);
+  }
+
+  if (!res.ok) {
+    throw new BackendAuthError(await readApiErrorMessage(res), res.status);
+  }
+
+  const json = (await res.json()) as { requests?: BackendAdminRequest[] };
+  if (!Array.isArray(json?.requests)) {
+    throw new BackendAuthError('Invalid response from backend.');
+  }
+
+  return json.requests;
+}
+
+export async function updateAdminRequest(
+  requestId: string,
+  input: { status: BackendRequestStatus; adminNotes?: string | null }
+): Promise<BackendAdminRequest> {
+  requireAdminSession();
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/admin/requests/${encodeURIComponent(requestId)}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getBackendAuthHeaders(),
+      },
+      body: JSON.stringify({
+        status: input.status,
+        adminNotes: input.adminNotes ?? null,
+      }),
+    });
+  } catch {
+    throw new BackendAuthError('Could not reach the backend. Is it running?', 0);
+  }
+
+  if (!res.ok) {
+    throw new BackendAuthError(await readApiErrorMessage(res), res.status);
+  }
+
+  const json = (await res.json()) as { request?: BackendAdminRequest };
+  if (!json?.request?.id) {
+    throw new BackendAuthError('Invalid response from backend.');
+  }
+
+  return json.request;
+}

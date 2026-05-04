@@ -94,7 +94,7 @@ export function Home() {
     return (
         <main className="bg-white text-gray-900">
             <section className="relative overflow-hidden border-b border-border bg-white pt-16">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.06),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(212,175,55,0.08),_transparent_30%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,23,42,0.06),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(212,175,55,0.08),transparent_30%)]" />
                 <div className="absolute left-1/2 top-10 h-72 w-72 -translate-x-1/2 rounded-full bg-secondary/10 blur-3xl" />
 
                 <div className="ykb-container relative py-12 text-center sm:py-14 lg:py-16">
@@ -102,7 +102,7 @@ export function Home() {
 
                         <h1 className="mt-4 text-3xl font-bold tracking-tight text-primary md:text-4xl lg:text-5xl">
                             You focus on
-                            <span className="block bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                            <span className="block bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent">
                                 what matters   we deal with the rest
                             </span>
                         </h1>
@@ -131,7 +131,7 @@ export function Home() {
                 </div>
             </section>
 
-            <section className="border-b border-border bg-surface/50 py-6">
+            <section className="border-b border-[#eadfc7] bg-[#fffdf4] py-6">
                 <div className="ykb-container">
                     <div className="overflow-hidden rounded-lg border border-border bg-border">
                         <div className="grid grid-cols-2 gap-px md:grid-cols-4">
@@ -149,7 +149,7 @@ export function Home() {
                 </div>
             </section>
 
-            <section className="ykb-section">
+            <section className="ykb-section bg-[#f8fbff]">
                 <div className="ykb-container">
                     <div className="ykb-section-heading mb-6">
                         <h2 className="ykb-section-title">Why Choose Us</h2>
@@ -174,7 +174,7 @@ export function Home() {
                 </div>
             </section>
 
-            <section className="ykb-section border-y border-border bg-surface/50">
+            <section className="ykb-section border-y border-[#eadfc7] bg-[#fffaf1]">
                 <div className="ykb-container">
                     <div className="ykb-section-heading mb-6">
                         <h2 className="ykb-section-title">Featured Services</h2>
@@ -199,7 +199,7 @@ export function Home() {
                 </div>
             </section>
 
-            <section className="ykb-section">
+            <section className="ykb-section bg-[#f4fbf7]">
                 <div className="ykb-container">
                     <div className="ykb-section-heading mb-6">
                         <h2 className="ykb-section-title">What We Do</h2>
@@ -227,7 +227,7 @@ export function Home() {
                 </div>
             </section>
 
-            <section className="ykb-section border-y border-border bg-surface/50">
+            <section className="ykb-section border-y border-[#e7d7bc] bg-[#fef8ef]">
                 <div className="ykb-container">
                     <div className="ykb-section-heading mb-6">
                         <h2 className="ykb-section-title">Our Purpose</h2>
@@ -258,7 +258,7 @@ export function Home() {
 
             <ReviewSection reviews={reviews} />
 
-            <section className="ykb-section">
+            <section className="ykb-section bg-[#eef7ff]">
                 <div className="ykb-container">
                     <div className="rounded-lg border border-border bg-white p-5 text-center md:p-6">
                         <h2 className="text-2xl font-semibold text-primary md:text-3xl">Ready to Get Started?</h2>

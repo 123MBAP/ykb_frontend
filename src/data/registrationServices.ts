@@ -2,6 +2,7 @@ export type PublicService = {
   id: number;
   title: string;
   description: string;
+  group?: StarterGuideCategoryGroup | null;
 };
 
 type StarterGuideCategoryGroup = 'APP' | 'INFRASTRUCTURE' | 'OTHERS';
@@ -85,16 +86,10 @@ function mergeServices(
   starterGuideCategories: StarterGuideCategory[]
 ): PublicService[] {
   const merged: PublicService[] = [];
-  const seenTitles = new Set<string>();
 
   const addService = (service: PublicService) => {
     const title = normalizeTitle(service.title);
     if (!title) return;
-
-    const key = title.toLowerCase();
-    if (seenTitles.has(key)) return;
-
-    seenTitles.add(key);
     merged.push({ ...service, title });
   };
 
@@ -106,6 +101,7 @@ function mergeServices(
       id: toNegativeId(category.id * 1000 + 1),
       title: categoryTitle,
       description: buildCategoryDescription(category),
+      group: category.group ?? null,
     });
 
     const subcategories = Array.isArray(category.subcategories) ? category.subcategories : [];
@@ -117,6 +113,7 @@ function mergeServices(
         id: toNegativeId(category.id * 1000 + index + 2),
         title: cleanSubcategory,
         description: buildSubcategoryDescription(categoryTitle, cleanSubcategory),
+        group: category.group ?? null,
       });
     });
   });

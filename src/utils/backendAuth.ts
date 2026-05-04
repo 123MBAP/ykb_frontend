@@ -17,6 +17,10 @@ export type BackendAuthResult = {
   accessToken: string;
 };
 
+export type BackendMeResult = {
+  user: BackendUser;
+};
+
 export type BackendSession = BackendAuthResult & {
   createdAt: string;
 };
@@ -107,6 +111,37 @@ export function getBackendAuthHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+export async function fetchBackendMe(): Promise<BackendUser> {
+  const session = getBackendSession();
+  if (!session?.accessToken) {
+    throw new BackendAuthError('Not authenticated.', 401);
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/auth/me`, {
+      method: 'GET',
+      headers: {
+        ...getBackendAuthHeaders(),
+      },
+    });
+  } catch {
+    throw new BackendAuthError('Could not reach the backend. Is it running?', 0);
+  }
+
+  if (!res.ok) {
+    const apiError = await readApiError(res);
+    throw new BackendAuthError(apiError.message, res.status, apiError.details);
+  }
+
+  const json = (await res.json()) as BackendMeResult;
+  if (!json?.user?.id) {
+    throw new BackendAuthError('Invalid response from backend.');
+  }
+
+  return json.user;
+}
+
 export async function loginBackend(emailRaw: string, passwordRaw: string): Promise<BackendSession> {
   const email = emailRaw.trim().toLowerCase();
   const password = passwordRaw;
@@ -153,7 +188,7 @@ export type RegisterBackendInput = {
   service?: string;
   location?: string;
   moneyRange?: string;
-  services?: Array<{ name: string; price: string }>;
+  services?: Array<{ name: string; price: string; description?: string }>;
 };
 
 export async function registerBackend(input: RegisterBackendInput): Promise<BackendSession> {

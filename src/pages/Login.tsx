@@ -9,6 +9,19 @@ export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const params = new URLSearchParams(location.search);
+  const nextParam = params.get('next');
+  const reason = params.get('reason');
+  const safeNext = nextParam && nextParam.startsWith('/') ? nextParam : null;
+  const showRequestNotice = reason === 'request' || Boolean(safeNext?.startsWith('/request'));
+  const registerHref = (() => {
+    if (!safeNext && !reason) return '/register';
+    const nextParams = new URLSearchParams();
+    if (safeNext) nextParams.set('next', safeNext);
+    if (reason) nextParams.set('reason', reason);
+    return `/register?${nextParams.toString()}`;
+  })();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -47,8 +60,7 @@ export function Login() {
 
     setFieldErrors({});
 
-    const next = new URLSearchParams(location.search).get('next');
-    const safeNext = next && next.startsWith('/') ? next : null;
+    // safeNext is computed once above
 
     try {
       const session = await loginBackend(email, password);
@@ -107,7 +119,7 @@ export function Login() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 pt-26">
+    <main className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 py-12 px-4 pt-26">
       <div className="max-w-4xl mx-auto">
         {/* Unified Card Container */}
         <div className="bg-white shadow-xl overflow-hidden">
@@ -154,6 +166,12 @@ export function Login() {
                 <img src={logo} alt="Your Kigali Bestie" className="h-26 w-auto object-contain" />
               </div>
               <form onSubmit={submit} className="space-y-5">
+                {showRequestNotice ? (
+                  <div className="ykb-alert ykb-alert-info">
+                    You need to sign in (or create an account) to submit your request. We saved your filled form and will bring you back after login.
+                  </div>
+                ) : null}
+
                 <div>
                   <label className="block text-sm font-semibold text-primary mb-1.5" htmlFor="email">
                     Email address
@@ -238,7 +256,7 @@ export function Login() {
                   </div>
                 </div>
 
-                <Link to="/register">
+                <Link to={registerHref}>
                   <button type="button" className="w-full ykb-button-outline">
                     Create an account
                   </button>

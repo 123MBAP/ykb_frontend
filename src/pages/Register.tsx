@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { fetchPublicServices, type PublicService } from '../data/registrationServices';
 import { type ServiceOffering, type UserRole } from '../utils/auth';
@@ -28,6 +28,17 @@ type ProviderState = {
   location: string;
   moneyRange: string;
   services: ServiceOffering[];
+  appLinks: AppLinksState;
+};
+
+type AppLinksState = {
+  webApp: boolean;
+  webAppUrl: string;
+  mobileApp: boolean;
+  playStore: boolean;
+  playStoreUrl: string;
+  appStore: boolean;
+  appStoreUrl: string;
 };
 
 type FieldErrors = Partial<
@@ -36,6 +47,7 @@ type FieldErrors = Partial<
     | 'lastName'
     | 'country'
     | 'phone'
+    | 'role'
     | 'email'
     | 'password'
     | 'confirm'
@@ -43,7 +55,11 @@ type FieldErrors = Partial<
     | 'service'
     | 'location'
     | 'moneyRange'
-    | 'services',
+    | 'services'
+    | 'appLinks'
+    | 'webAppUrl'
+    | 'playStoreUrl'
+    | 'appStoreUrl',
     string
   >
 >;
@@ -87,6 +103,18 @@ function createEmptyServiceRow(): ServiceOffering {
   return { name: '', price: '' };
 }
 
+function createEmptyAppLinksState(): AppLinksState {
+  return {
+    webApp: false,
+    webAppUrl: '',
+    mobileApp: false,
+    playStore: false,
+    playStoreUrl: '',
+    appStore: false,
+    appStoreUrl: '',
+  };
+}
+
 function buildDefaultProviderState(services: PublicService[]): ProviderState {
   return {
     businessName: '',
@@ -94,6 +122,7 @@ function buildDefaultProviderState(services: PublicService[]): ProviderState {
     location: '',
     moneyRange: '',
     services: [createEmptyServiceRow()],
+    appLinks: createEmptyAppLinksState(),
   };
 }
 
@@ -101,12 +130,65 @@ function normalizeServiceRows(rows: ServiceOffering[]): ServiceOffering[] {
   return rows.map((row) => ({
     name: row.name.trim(),
     price: row.price.trim(),
+    description: row.description?.trim() || undefined,
   }));
 }
 
+function isAppCategory(service?: PublicService | undefined | null): boolean {
+  return service?.group === 'APP';
+}
+
+function buildAppServiceRows(appLinks: AppLinksState): ServiceOffering[] {
+  const rows: ServiceOffering[] = [];
+
+  if (appLinks.webApp) {
+    rows.push({
+      name: 'Web app',
+      price: 'Included',
+      description: appLinks.webAppUrl.trim(),
+    });
+  }
+
+  if (appLinks.mobileApp) {
+    if (appLinks.playStore) {
+      rows.push({
+        name: 'Play Store',
+        price: 'Included',
+        description: appLinks.playStoreUrl.trim(),
+      });
+    }
+
+    if (appLinks.appStore) {
+      rows.push({
+        name: 'App Store',
+        price: 'Included',
+        description: appLinks.appStoreUrl.trim(),
+      });
+    }
+  }
+
+  return rows;
+}
+
 export function Register() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const params = new URLSearchParams(location.search);
+  const nextParam = params.get('next');
+  const reason = params.get('reason');
+  const safeNext = nextParam && nextParam.startsWith('/') ? nextParam : null;
+  const showRequestNotice = reason === 'request' || Boolean(safeNext?.startsWith('/request'));
+  const loginHref = (() => {
+    if (!safeNext && !reason) return '/login';
+    const nextParams = new URLSearchParams();
+    if (safeNext) nextParams.set('next', safeNext);
+    if (reason) nextParams.set('reason', reason);
+    return `/login?${nextParams.toString()}`;
+  })();
+
   const [step, setStep] = useState<Step>(1);
-  const [role, setRole] = useState<UserRole>('starter');
+  const [role, setRole] = useState<UserRole | ''>('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -151,6 +233,13 @@ export function Register() {
   const [provider, setProvider] = useState<ProviderState>(() => buildDefaultProviderState([]));
 
   useEffect(() => {
+    if (!success) return;
+    if (!safeNext) return;
+    const timer = setTimeout(() => navigate(safeNext), 500);
+    return () => clearTimeout(timer);
+  }, [navigate, safeNext, success]);
+
+  useEffect(() => {
     let mounted = true;
 
     const loadServices = async () => {
@@ -187,6 +276,8 @@ export function Register() {
     [publicServices, provider.service]
   );
 
+  const showAppLinks = useMemo(() => isAppCategory(providerService), [providerService]);
+
   const resetForm = () => {
     setStep(1);
     setError(null);
@@ -195,7 +286,7 @@ export function Register() {
     setShowPassword(false);
     setShowConfirmPassword(false);
     setFieldErrors({});
-    setRole('starter');
+    setRole('');
     setIdentity({
       firstName: '',
       middleName: '',
@@ -233,6 +324,8 @@ export function Register() {
 
     const nextFieldErrors: FieldErrors = {};
 
+    if (!role) nextFieldErrors.role = 'Please select an account type.';
+
     if (!isNonEmpty(identity.firstName)) nextFieldErrors.firstName = 'First name is required.';
     if (!isNonEmpty(identity.lastName)) nextFieldErrors.lastName = 'Last name is required.';
     if (!isNonEmpty(identity.country)) nextFieldErrors.country = 'Country is required.';
@@ -248,92 +341,17 @@ export function Register() {
     setStep(2);
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(null);
-
-    if (isSubmitting) return;
-
-    const nextFieldErrors: FieldErrors = {};
-
-    if (!isNonEmpty(account.email)) nextFieldErrors.email = 'Email is required.';
-    if (account.password.length < PASSWORD_MIN_LENGTH) {
-      nextFieldErrors.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
-    }
-    if (account.password !== account.confirm) {
-      nextFieldErrors.confirm = 'Passwords do not match.';
-    }
-
-    let providerPayload:
-      | {
-          businessName: string;
-          service: string;
-          location: string;
-          moneyRange: string;
-          services: Array<{ name: string; price: string }>;
-        }
-      | null = null;
-
-    if (role === 'serviceProvider') {
-      if (isLoadingServices) {
-        setError('Please wait while services are loading.');
-        return;
-      }
-
-      if (publicServices.length === 0) {
-        setError('No services are available yet. Ask an admin to create one first.');
-        return;
-      }
-
-      if (!isNonEmpty(provider.businessName)) nextFieldErrors.businessName = 'Business name is required.';
-      if (!isNonEmpty(provider.service)) nextFieldErrors.service = 'Please select a service.';
-      if (!isNonEmpty(provider.location)) nextFieldErrors.location = 'Location is required.';
-      if (!isNonEmpty(provider.moneyRange)) nextFieldErrors.moneyRange = 'Money range is required.';
-
-      const normalizedServices = normalizeServiceRows(provider.services);
-      const hasCompleteService = normalizedServices.some((service) => isNonEmpty(service.name) && isNonEmpty(service.price));
-
-      if (!hasCompleteService) {
-        nextFieldErrors.services = 'Add at least one service with its price.';
-      }
-
-      const hasPartialService = normalizedServices.some(
-        (service) =>
-          (isNonEmpty(service.name) && !isNonEmpty(service.price)) ||
-          (!isNonEmpty(service.name) && isNonEmpty(service.price))
-      );
-
-      if (hasPartialService) {
-        nextFieldErrors.services = 'Each service row needs both a service name and a price.';
-      }
-
-      if (Object.keys(nextFieldErrors).length > 0) {
-        setFieldErrors(nextFieldErrors);
-        setError(Object.values(nextFieldErrors)[0] ?? 'Please fix the highlighted fields.');
-        return;
-      }
-
-      providerPayload = {
-        businessName: provider.businessName.trim(),
-        service: provider.service.trim(),
-        location: provider.location.trim(),
-        moneyRange: provider.moneyRange.trim(),
-        services: normalizedServices.filter((service) => isNonEmpty(service.name) && isNonEmpty(service.price)),
-      };
-    }
-
-    if (Object.keys(nextFieldErrors).length > 0) {
-      setFieldErrors(nextFieldErrors);
-      setError(Object.values(nextFieldErrors)[0] ?? 'Please fix the highlighted fields.');
-      return;
-    }
-
-    setFieldErrors({});
-
+  const performRegistration = async (providerPayload: Record<string, unknown> | null) => {
     const fullName = [identity.firstName, identity.middleName, identity.lastName]
       .map((part) => part.trim())
       .filter(Boolean)
       .join(' ');
+
+    if (!role) {
+      setFieldErrors((prev) => ({ ...prev, role: 'Please select an account type.' }));
+      setError('Please select an account type.');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -390,8 +408,160 @@ export function Register() {
     }
   };
 
+  const handleStarterSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+
+    if (isSubmitting) return;
+
+    const nextFieldErrors: FieldErrors = {};
+
+    if (!role) nextFieldErrors.role = 'Please select an account type.';
+    if (role && role !== 'starter') nextFieldErrors.role = 'Select Starter to use this form.';
+
+    if (!isNonEmpty(identity.firstName)) nextFieldErrors.firstName = 'First name is required.';
+    if (!isNonEmpty(identity.lastName)) nextFieldErrors.lastName = 'Last name is required.';
+    if (!isNonEmpty(identity.country)) nextFieldErrors.country = 'Country is required.';
+    if (!isNonEmpty(identity.phone)) nextFieldErrors.phone = 'Phone number is required.';
+
+    if (!isNonEmpty(account.email)) nextFieldErrors.email = 'Email is required.';
+    if (account.password.length < PASSWORD_MIN_LENGTH) {
+      nextFieldErrors.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
+    }
+    if (account.password !== account.confirm) {
+      nextFieldErrors.confirm = 'Passwords do not match.';
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      setError(Object.values(nextFieldErrors)[0] ?? 'Please fix the highlighted fields.');
+      return;
+    }
+
+    setFieldErrors({});
+    await performRegistration(null);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+
+    if (isSubmitting) return;
+
+    const nextFieldErrors: FieldErrors = {};
+
+    if (!role) nextFieldErrors.role = 'Please select an account type.';
+
+    if (!isNonEmpty(account.email)) nextFieldErrors.email = 'Email is required.';
+    if (account.password.length < PASSWORD_MIN_LENGTH) {
+      nextFieldErrors.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
+    }
+    if (account.password !== account.confirm) {
+      nextFieldErrors.confirm = 'Passwords do not match.';
+    }
+
+    let providerPayload:
+      | {
+          businessName: string;
+          service: string;
+          location: string;
+          moneyRange: string;
+          services: Array<{ name: string; price: string }>;
+        }
+      | null = null;
+
+    if (role === 'serviceProvider') {
+      if (isLoadingServices) {
+        setError('Please wait while services are loading.');
+        return;
+      }
+
+      if (publicServices.length === 0) {
+        setError('No services are available yet. Ask an admin to create one first.');
+        return;
+      }
+
+      if (!isNonEmpty(provider.businessName)) nextFieldErrors.businessName = 'Business name is required.';
+      if (!isNonEmpty(provider.service)) nextFieldErrors.service = 'Please select a service.';
+      if (!isNonEmpty(provider.location)) nextFieldErrors.location = 'Location is required.';
+      if (!isNonEmpty(provider.moneyRange)) nextFieldErrors.moneyRange = 'Money range is required.';
+
+      const normalizedServices = normalizeServiceRows(provider.services);
+      const hasCompleteService = normalizedServices.some((service) => isNonEmpty(service.name) && isNonEmpty(service.price));
+
+      if (!hasCompleteService) {
+        nextFieldErrors.services = 'Add at least one service with its price.';
+      }
+
+      const hasPartialService = normalizedServices.some(
+        (service) =>
+          (isNonEmpty(service.name) && !isNonEmpty(service.price)) ||
+          (!isNonEmpty(service.name) && isNonEmpty(service.price))
+      );
+
+      if (hasPartialService) {
+        nextFieldErrors.services = 'Each service row needs both a service name and a price.';
+      }
+
+      if (showAppLinks) {
+        const { appLinks } = provider;
+        const hasAppChoice = appLinks.webApp || appLinks.mobileApp;
+
+        if (!hasAppChoice) {
+          nextFieldErrors.appLinks = 'Select web app or mobile app.';
+        }
+
+        if (appLinks.webApp && !isNonEmpty(appLinks.webAppUrl)) {
+          nextFieldErrors.webAppUrl = 'Web app link is required.';
+        }
+
+        if (appLinks.mobileApp) {
+          const hasStoreChoice = appLinks.playStore || appLinks.appStore;
+          if (!hasStoreChoice) {
+            nextFieldErrors.appLinks = 'Select Play Store or App Store for the mobile app.';
+          }
+
+          if (appLinks.playStore && !isNonEmpty(appLinks.playStoreUrl)) {
+            nextFieldErrors.playStoreUrl = 'Play Store link is required.';
+          }
+
+          if (appLinks.appStore && !isNonEmpty(appLinks.appStoreUrl)) {
+            nextFieldErrors.appStoreUrl = 'App Store link is required.';
+          }
+        }
+      }
+
+      if (Object.keys(nextFieldErrors).length > 0) {
+        setFieldErrors(nextFieldErrors);
+        setError(Object.values(nextFieldErrors)[0] ?? 'Please fix the highlighted fields.');
+        return;
+      }
+
+      providerPayload = {
+        businessName: provider.businessName.trim(),
+        service: provider.service.trim(),
+        location: provider.location.trim(),
+        moneyRange: provider.moneyRange.trim(),
+        services: [
+          ...normalizedServices.filter((service) => isNonEmpty(service.name) && isNonEmpty(service.price)),
+          ...buildAppServiceRows(provider.appLinks),
+        ],
+      };
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      setError(Object.values(nextFieldErrors)[0] ?? 'Please fix the highlighted fields.');
+      return;
+    }
+
+    setFieldErrors({});
+
+    await performRegistration(providerPayload as Record<string, unknown> | null);
+  };
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 pt-20">
+    <main className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 py-12 px-4 pt-20">
       <div className="max-w-6xl mx-auto">
         {/* Unified Card Container */}
         <div className="bg-white  shadow-xl overflow-hidden">
@@ -407,14 +577,16 @@ export function Register() {
               </div>
               <h2 className="text-3xl font-bold text-gray-900">Registration complete!</h2>
               <p className="text-gray-600 max-w-md mx-auto">
-                Your account has been created successfully. You can now sign in to continue.
+                {safeNext
+                  ? 'Your account has been created successfully. Redirecting you back to finish your request…'
+                  : 'Your account has been created successfully. You can now sign in to continue.'}
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
                 <button type="button" className="ykb-button-primary" onClick={resetForm}>
                   Register another account
                 </button>
-                <Link to="/login" className="ykb-button-outline">
-                  Go to login
+                <Link to={safeNext ?? loginHref} className="ykb-button-outline">
+                  {safeNext ? 'Continue' : 'Go to login'}
                 </Link>
               </div>
             </div>
@@ -434,35 +606,50 @@ export function Register() {
                   <div className="border-t border-white/20 pt-6">
                     <div className="flex items-center justify-between mb-4">
                       <span className="text-sm font-medium text-white/80">Registration progress</span>
-                      <span className="text-2xl font-bold">{step}/2</span>
+                      <span className="text-2xl font-bold">
+                        {!role ? '—' : role === 'serviceProvider' ? `${step}/2` : '1/1'}
+                      </span>
                     </div>
                     <div className="w-full bg-white/20 rounded-full h-2">
                       <div 
                         className="bg-secondary h-2 rounded-full transition-all duration-300" 
-                        style={{ width: step === 1 ? '50%' : '100%' }}
+                        style={{ width: !role ? '0%' : role === 'serviceProvider' ? (step === 1 ? '50%' : '100%') : '100%' }}
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-3 pt-4">
-                    <div className="flex items-center gap-3 text-sm">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-secondary text-primary' : 'bg-white/20 text-white/60'}`}>1</div>
-                      <span className={step >= 1 ? 'text-white' : 'text-white/60'}>Personal Information</span>
+                  {role === 'serviceProvider' ? (
+                    <div className="space-y-3 pt-4">
+                      <div className="flex items-center gap-3 text-sm">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-secondary text-primary' : 'bg-white/20 text-white/60'}`}>1</div>
+                        <span className={step >= 1 ? 'text-white' : 'text-white/60'}>Personal Information</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step === 2 ? 'bg-secondary text-primary' : 'bg-white/20 text-white/60'}`}>2</div>
+                        <span className={step === 2 ? 'text-white font-medium' : 'text-white/60'}>Account Credentials</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step === 2 ? 'bg-secondary text-primary' : step > 2 ? 'bg-green-500' : 'bg-white/20 text-white/60'}`}>2</div>
-                      <span className={step === 2 ? 'text-white font-medium' : step > 2 ? 'text-white' : 'text-white/60'}>Account Credentials</span>
+                  ) : role === 'starter' ? (
+                    <div className="space-y-3 pt-4">
+                      <div className="flex items-center gap-3 text-sm">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-secondary text-primary">1</div>
+                        <span className="text-white">Starter details</span>
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
 
                   <div className="pt-6 border-t border-white/20">
                     <p className="text-xs uppercase tracking-wider text-secondary font-semibold mb-3">Selected account type</p>
                     <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-                      <p className="font-semibold">{role === 'serviceProvider' ? 'Service Provider' : 'Starter'}</p>
+                      <p className="font-semibold">
+                        {!role ? 'Select a type' : role === 'serviceProvider' ? 'Service Provider' : 'Starter'}
+                      </p>
                       <p className="text-xs text-white/70 mt-1">
                         {role === 'serviceProvider' 
                           ? 'List services, manage bookings, grow your business' 
-                          : 'Request services, book providers, get things done'}
+                          : role === 'starter'
+                            ? 'Request services, book providers, get things done'
+                            : 'Choose Starter or Service Provider to begin.'}
                       </p>
                     </div>
                   </div>
@@ -474,33 +661,247 @@ export function Register() {
                 <div className="flex justify-center mb-4">
                   <img src={logo} alt="Your Kigali Bestie" className="h-26 w-auto object-contain" />
                 </div>
-                <form onSubmit={step === 1 ? handleFirstStepSubmit : handleSubmit} className="space-y-5" noValidate>
+                <form
+                  onSubmit={role === 'serviceProvider' ? (step === 1 ? handleFirstStepSubmit : handleSubmit) : handleStarterSubmit}
+                  className="space-y-5"
+                  noValidate
+                >
+                  {showRequestNotice ? (
+                    <div className="ykb-alert ykb-alert-info">
+                      Create an account to submit your request. We’ll keep your filled form and bring you back after registration.
+                    </div>
+                  ) : null}
+
                   {error && (
                     <div className="ykb-alert ykb-alert-error">
                       {error}
                     </div>
                   )}
 
-                  {step === 1 ? (
-                    <>
-                      <div>
-                        {renderFieldLabel('Register as', 'role')}
-                        <select
-                          id="role"
-                          value={role}
-                          onChange={(event) => {
-                            const nextRole = event.target.value as UserRole;
-                            setRole(nextRole);
+                  <div>
+                    {renderFieldLabel('Register as', 'role')}
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <label
+                        className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition ${
+                          role === 'starter' ? 'border-secondary bg-secondary/10' : 'border-border bg-surface hover:border-secondary/30'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="role"
+                          value="starter"
+                          checked={role === 'starter'}
+                          onChange={() => {
+                            setRole('starter');
                             setStep(1);
                             setError(null);
                             setFieldErrors({});
                           }}
-                          className="ykb-field"
-                        >
-                          <option value="starter">Starter</option>
-                          <option value="serviceProvider">Service Provider</option>
-                        </select>
+                          className="mt-1 h-4 w-4 rounded border-border text-secondary focus:ring-secondary"
+                        />
+                        <span className="text-sm text-primary">
+                          <span className="block font-semibold">Starter</span>
+                          <span className="block text-xs text-textSecondary">Request services and book providers.</span>
+                        </span>
+                      </label>
+
+                      <label
+                        className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition ${
+                          role === 'serviceProvider' ? 'border-secondary bg-secondary/10' : 'border-border bg-surface hover:border-secondary/30'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="role"
+                          value="serviceProvider"
+                          checked={role === 'serviceProvider'}
+                          onChange={() => {
+                            setRole('serviceProvider');
+                            setStep(1);
+                            setError(null);
+                            setFieldErrors({});
+                            setProvider(buildDefaultProviderState(publicServices));
+                          }}
+                          className="mt-1 h-4 w-4 rounded border-border text-secondary focus:ring-secondary"
+                        />
+                        <span className="text-sm text-primary">
+                          <span className="block font-semibold">Service Provider</span>
+                          <span className="block text-xs text-textSecondary">List services and receive bookings.</span>
+                        </span>
+                      </label>
+                    </div>
+                    {inlineError('role')}
+                  </div>
+
+                  {role === '' ? (
+                    <div className="ykb-alert ykb-alert-info">Please choose Starter or Service Provider to continue.</div>
+                  ) : role === 'starter' ? (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          {renderFieldLabel('First name', 'firstName')}
+                          <input
+                            id="firstName"
+                            required
+                            value={identity.firstName}
+                            onChange={(event) => {
+                              setIdentity((prev) => ({ ...prev, firstName: event.target.value }));
+                              clearFieldError('firstName');
+                            }}
+                            className={fieldClass('firstName')}
+                            placeholder="e.g. Aline"
+                          />
+                          {inlineError('firstName')}
+                        </div>
+
+                        <div>
+                          {renderFieldLabel('Middle name', 'middleName', false)}
+                          <input
+                            id="middleName"
+                            value={identity.middleName}
+                            onChange={(event) => setIdentity((prev) => ({ ...prev, middleName: event.target.value }))}
+                            className="ykb-field"
+                            placeholder="e.g. Marie"
+                          />
+                        </div>
                       </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          {renderFieldLabel('Last name', 'lastName')}
+                          <input
+                            id="lastName"
+                            required
+                            value={identity.lastName}
+                            onChange={(event) => {
+                              setIdentity((prev) => ({ ...prev, lastName: event.target.value }));
+                              clearFieldError('lastName');
+                            }}
+                            className={fieldClass('lastName')}
+                            placeholder="e.g. Uwase"
+                          />
+                          {inlineError('lastName')}
+                        </div>
+
+                        <div>
+                          {renderFieldLabel('Country', 'country')}
+                          <input
+                            id="country"
+                            required
+                            value={identity.country}
+                            onChange={(event) => {
+                              setIdentity((prev) => ({ ...prev, country: event.target.value }));
+                              clearFieldError('country');
+                            }}
+                            className={fieldClass('country')}
+                            placeholder="e.g. Rwanda"
+                          />
+                          {inlineError('country')}
+                        </div>
+                      </div>
+
+                      <div>
+                        {renderFieldLabel('Phone number', 'phone')}
+                        <input
+                          id="phone"
+                          required
+                          value={identity.phone}
+                          onChange={(event) => {
+                            setIdentity((prev) => ({ ...prev, phone: onlyDigits(event.target.value).slice(0, 15) }));
+                            clearFieldError('phone');
+                          }}
+                          className={fieldClass('phone')}
+                          inputMode="tel"
+                          placeholder="e.g. 0798891543"
+                        />
+                        {inlineError('phone')}
+                      </div>
+
+                      <div>
+                        {renderFieldLabel('Email address', 'email')}
+                        <input
+                          id="email"
+                          type="email"
+                          required
+                          value={account.email}
+                          onChange={(event) => {
+                            setAccount((prev) => ({ ...prev, email: event.target.value }));
+                            clearFieldError('email');
+                          }}
+                          className={fieldClass('email')}
+                          placeholder="you@example.com"
+                        />
+                        {inlineError('email')}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          {renderFieldLabel('Password', 'password')}
+                          <div className="relative">
+                            <input
+                              id="password"
+                              type={showPassword ? 'text' : 'password'}
+                              required
+                              value={account.password}
+                              onChange={(event) => {
+                                setAccount((prev) => ({ ...prev, password: event.target.value }));
+                                clearFieldError('password');
+                              }}
+                              className={fieldClass('password', 'pr-10')}
+                              autoComplete="new-password"
+                              placeholder={`Min. ${PASSWORD_MIN_LENGTH} characters`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword((prev) => !prev)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-textSecondary hover:text-primary transition"
+                              aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            >
+                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                          {inlineError('password')}
+                        </div>
+
+                        <div>
+                          {renderFieldLabel('Confirm password', 'confirm')}
+                          <div className="relative">
+                            <input
+                              id="confirm"
+                              type={showConfirmPassword ? 'text' : 'password'}
+                              required
+                              value={account.confirm}
+                              onChange={(event) => {
+                                setAccount((prev) => ({ ...prev, confirm: event.target.value }));
+                                clearFieldError('confirm');
+                              }}
+                              className={fieldClass('confirm', 'pr-10')}
+                              autoComplete="new-password"
+                              placeholder="Confirm your password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPassword((prev) => !prev)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-textSecondary hover:text-primary transition"
+                              aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                            >
+                              {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                          {inlineError('confirm')}
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full ykb-button-primary disabled:opacity-60 disabled:cursor-not-allowed"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? 'Creating account...' : 'Create starter account →'}
+                      </button>
+                    </>
+                  ) : step === 1 ? (
+                    <>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -760,6 +1161,193 @@ export function Register() {
                             />
                             {inlineError('moneyRange')}
                           </div>
+
+                          {showAppLinks && (
+                            <div className="space-y-4 rounded-lg border border-dashed border-gray-300 bg-white p-4">
+                              <div>
+                                <h4 className="font-semibold text-gray-800">App links</h4>
+                                <p className="text-xs text-gray-500">Select the app types you provide and add the required links.</p>
+                              </div>
+
+                              <div className="space-y-4">
+                                <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={provider.appLinks.webApp}
+                                    onChange={(event) => {
+                                      const checked = event.target.checked;
+                                      setProvider((prev) => ({
+                                        ...prev,
+                                        appLinks: {
+                                          ...prev.appLinks,
+                                          webApp: checked,
+                                          webAppUrl: checked ? prev.appLinks.webAppUrl : '',
+                                        },
+                                      }));
+                                      clearFieldError('appLinks');
+                                      clearFieldError('webAppUrl');
+                                    }}
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-sm text-gray-700">
+                                    <span className="font-semibold block">Web app</span>
+                                    <span className="text-xs text-gray-500">Show a web app link field.</span>
+                                  </span>
+                                </label>
+
+                                {provider.appLinks.webApp && (
+                                  <div>
+                                    {renderFieldLabel('Web app link', 'webAppUrl')}
+                                    <input
+                                      id="webAppUrl"
+                                      required
+                                      type="url"
+                                      value={provider.appLinks.webAppUrl}
+                                      onChange={(event) => {
+                                        setProvider((prev) => ({
+                                          ...prev,
+                                          appLinks: { ...prev.appLinks, webAppUrl: event.target.value },
+                                        }));
+                                        clearFieldError('webAppUrl');
+                                      }}
+                                      className={fieldClass('webAppUrl')}
+                                      placeholder="https://your-web-app.example"
+                                    />
+                                    {inlineError('webAppUrl')}
+                                  </div>
+                                )}
+
+                                <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={provider.appLinks.mobileApp}
+                                    onChange={(event) => {
+                                      const checked = event.target.checked;
+                                      setProvider((prev) => ({
+                                        ...prev,
+                                        appLinks: {
+                                          ...prev.appLinks,
+                                          mobileApp: checked,
+                                          playStore: checked ? prev.appLinks.playStore : false,
+                                          playStoreUrl: checked ? prev.appLinks.playStoreUrl : '',
+                                          appStore: checked ? prev.appLinks.appStore : false,
+                                          appStoreUrl: checked ? prev.appLinks.appStoreUrl : '',
+                                        },
+                                      }));
+                                      clearFieldError('appLinks');
+                                    }}
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-sm text-gray-700">
+                                    <span className="font-semibold block">Mobile app</span>
+                                    <span className="text-xs text-gray-500">Show store options and their links.</span>
+                                  </span>
+                                </label>
+
+                                {provider.appLinks.mobileApp && (
+                                  <div className="space-y-4 pl-1">
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                      <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3">
+                                        <input
+                                          type="checkbox"
+                                          checked={provider.appLinks.playStore}
+                                          onChange={(event) => {
+                                            const checked = event.target.checked;
+                                            setProvider((prev) => ({
+                                              ...prev,
+                                              appLinks: {
+                                                ...prev.appLinks,
+                                                playStore: checked,
+                                                playStoreUrl: checked ? prev.appLinks.playStoreUrl : '',
+                                              },
+                                            }));
+                                            clearFieldError('appLinks');
+                                            clearFieldError('playStoreUrl');
+                                          }}
+                                          className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <span className="text-sm text-gray-700">
+                                          <span className="font-semibold block">Play Store</span>
+                                          <span className="text-xs text-gray-500">Add the Android store link.</span>
+                                        </span>
+                                      </label>
+
+                                      <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3">
+                                        <input
+                                          type="checkbox"
+                                          checked={provider.appLinks.appStore}
+                                          onChange={(event) => {
+                                            const checked = event.target.checked;
+                                            setProvider((prev) => ({
+                                              ...prev,
+                                              appLinks: {
+                                                ...prev.appLinks,
+                                                appStore: checked,
+                                                appStoreUrl: checked ? prev.appLinks.appStoreUrl : '',
+                                              },
+                                            }));
+                                            clearFieldError('appLinks');
+                                            clearFieldError('appStoreUrl');
+                                          }}
+                                          className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <span className="text-sm text-gray-700">
+                                          <span className="font-semibold block">App Store</span>
+                                          <span className="text-xs text-gray-500">Add the iPhone store link.</span>
+                                        </span>
+                                      </label>
+                                    </div>
+
+                                    {provider.appLinks.playStore && (
+                                      <div>
+                                        {renderFieldLabel('Play Store link', 'playStoreUrl')}
+                                        <input
+                                          id="playStoreUrl"
+                                          required
+                                          type="url"
+                                          value={provider.appLinks.playStoreUrl}
+                                          onChange={(event) => {
+                                            setProvider((prev) => ({
+                                              ...prev,
+                                              appLinks: { ...prev.appLinks, playStoreUrl: event.target.value },
+                                            }));
+                                            clearFieldError('playStoreUrl');
+                                          }}
+                                          className={fieldClass('playStoreUrl')}
+                                          placeholder="https://play.google.com/store/apps/details?id=..."
+                                        />
+                                        {inlineError('playStoreUrl')}
+                                      </div>
+                                    )}
+
+                                    {provider.appLinks.appStore && (
+                                      <div>
+                                        {renderFieldLabel('App Store link', 'appStoreUrl')}
+                                        <input
+                                          id="appStoreUrl"
+                                          required
+                                          type="url"
+                                          value={provider.appLinks.appStoreUrl}
+                                          onChange={(event) => {
+                                            setProvider((prev) => ({
+                                              ...prev,
+                                              appLinks: { ...prev.appLinks, appStoreUrl: event.target.value },
+                                            }));
+                                            clearFieldError('appStoreUrl');
+                                          }}
+                                          className={fieldClass('appStoreUrl')}
+                                          placeholder="https://apps.apple.com/app/..."
+                                        />
+                                        {inlineError('appStoreUrl')}
+                                      </div>
+                                    )}
+
+                                    {inlineError('appLinks')}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
 
                           <div>
                             <div className="flex items-center justify-between mb-3">

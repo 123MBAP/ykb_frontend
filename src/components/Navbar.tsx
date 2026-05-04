@@ -12,6 +12,10 @@ export function Navbar() {
 
     const backendSession = getBackendSession();
     const isBackendProvider = backendSession?.user?.role === 'PROVIDER';
+    const isBackendCustomer = backendSession?.user?.role === 'CUSTOMER';
+    const isLoggedIn = Boolean(backendSession);
+
+    const dashboardPath = isBackendAdmin() ? '/admin' : isBackendProvider ? '/provider' : '/profile';
 
     useEffect(() => {
         const handleScroll = () => {
@@ -25,19 +29,21 @@ export function Navbar() {
         setIsOpen(false);
     }, [location]);
 
+    const profilePath = isBackendProvider ? '/provider/profile' : '/profile';
+
     const navLinks = [
         { path: '/', label: 'Home' },
         { path: '/services', label: 'Services' },
-        { path: '/guide', label: 'Guide' },
-        { path: '/request', label: 'Request' },
-        { path: '/profile', label: 'Profile' },
-        { path: '/subscribe', label: 'Subscribe' },
-        { path: '/login', label: 'Login' },
-        { path: '/register', label: 'Register' },
-        { path: '/book-housing', label: 'Housing' },
-        { path: '/book-translator', label: 'Translator' },
-        ...(isBackendProvider ? [{ path: '/provider', label: 'Provider' }] : []),
-        ...(isBackendAdmin() ? [{ path: '/admin', label: 'Admin' }] : []),
+        { path: '/subscribe', label: 'Support' },
+        ...(isLoggedIn
+            ? [
+                  ...(isBackendCustomer ? [] : [{ path: profilePath, label: 'Profile' }]),
+                  { path: dashboardPath, label: 'Dashboard' },
+              ]
+            : [
+                  { path: '/login', label: 'Login' },
+                  { path: '/register', label: 'Register' },
+              ]),
     ];
 
     const isActive = (path: string) => {
