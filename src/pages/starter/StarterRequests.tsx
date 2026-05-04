@@ -357,7 +357,7 @@ export function StarterRequests() {
 
 										{r.customerNotes ? (
 											<div className="text-textSecondary whitespace-pre-wrap">
-												<span className="font-semibold text-primary">Your notes:</span> {r.customerNotes}
+												<span className="font-semibold text-primary">Your notes wantedn  the modifications  :</span> {r.customerNotes}
 											</div>
 										) : null}
 									</div>
