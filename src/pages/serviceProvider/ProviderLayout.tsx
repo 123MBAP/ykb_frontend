@@ -1,10 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-
-const navItems: Array<{ to: string; label: string }> = [
-	{ to: '/provider', label: 'Overview' },
-	{ to: '/provider/services', label: 'Services' },
-	{ to: '/provider/profile', label: 'Profile' },
-];
+import { useTranslation } from 'react-i18next';
 
 function ProviderTab(props: { to: string; label: string; isLast: boolean }) {
 	const { to, label, isLast } = props;
@@ -26,12 +21,21 @@ function ProviderTab(props: { to: string; label: string; isLast: boolean }) {
 }
 
 export function ProviderLayout() {
+	const { t } = useTranslation();
+
+	const navItems: Array<{ to: string; label: string }> = [
+		{ to: '/provider', label: t('provider.overview') },
+		{ to: '/provider/services', label: t('provider.services') },
+		{ to: '/provider/requests', label: t('provider.requests') },
+		{ to: '/provider/profile', label: t('provider.profile') },
+	];
+
 	return (
 		<div className="relative">
 			<div className="ykb-container">
-				<div className="pt-16">
+				<div className="pt-24">
 					<div className="mb-4 flex items-center justify-between gap-3">
-						<div className="text-sm font-bold text-primary">Service Provider</div>
+						<div className="text-sm font-bold text-primary">{t('provider.dashboard')}</div>
 						<nav className="max-w-full overflow-x-auto">
 							<div className="flex items-stretch whitespace-nowrap">
 								{navItems.map((item, index) => (

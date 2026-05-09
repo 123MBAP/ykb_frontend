@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { fetchPublicServices, type PublicService } from '../data/registrationServices';
 import { type ServiceOffering, type UserRole } from '../utils/auth';
 import { BackendAuthError, registerBackend } from '../utils/backendAuth';
@@ -64,18 +65,18 @@ type FieldErrors = Partial<
   >
 >;
 
-function mapBackendMessageToFieldErrors(message: string): FieldErrors {
+function mapBackendMessageToFieldErrors(message: string, t: (key: string, options?: Record<string, unknown>) => string): FieldErrors {
   const normalized = message.toLowerCase();
   const next: FieldErrors = {};
 
-  if (normalized.includes('businessname')) next.businessName = 'Business name is required.';
-  if (normalized.includes('moneyrange')) next.moneyRange = 'Money range is required.';
-  if (normalized.includes('services')) next.services = 'Add at least one service with its price.';
-  if (normalized.includes('location')) next.location = 'Location is required.';
-  if (normalized.includes('service')) next.service = 'Please select a service.';
+  if (normalized.includes('businessname')) next.businessName = t('auth.businessNameRequired');
+  if (normalized.includes('moneyrange')) next.moneyRange = t('auth.moneyRangeRequired');
+  if (normalized.includes('services')) next.services = t('auth.servicesRequired');
+  if (normalized.includes('location')) next.location = t('auth.locationRequired');
+  if (normalized.includes('service')) next.service = t('auth.serviceRequired');
 
-  if (normalized.includes('email')) next.email = 'Please enter a valid email address.';
-  if (normalized.includes('password')) next.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
+  if (normalized.includes('email')) next.email = t('auth.emailInvalid');
+  if (normalized.includes('password')) next.password = t('auth.passwordMinLength', { length: PASSWORD_MIN_LENGTH });
 
   return next;
 }
@@ -90,11 +91,11 @@ function isNonEmpty(value: string): boolean {
   return value.trim().length > 0;
 }
 
-function renderFieldLabel(label: string, htmlFor: string, required = true) {
+function renderFieldLabel(label: string, htmlFor: string, required = true, t?: (key: string) => string) {
   return (
     <label className="block text-sm font-semibold text-primary mb-1.5" htmlFor={htmlFor}>
       {label}
-      {!required ? <span className="text-gray-400"> (optional)</span> : null}
+      {!required && t ? <span className="text-gray-400">{t('auth.optional')}</span> : null}
     </label>
   );
 }
@@ -171,6 +172,7 @@ function buildAppServiceRows(appLinks: AppLinksState): ServiceOffering[] {
 }
 
 export function Register() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -258,7 +260,7 @@ export function Register() {
       } catch {
         if (!mounted) return;
         setPublicServices([]);
-        setServiceLoadError('Could not load the admin-created services right now.');
+        setServiceLoadError(t('auth.serviceLoadError'));
       } finally {
         if (mounted) setIsLoadingServices(false);
       }
@@ -324,16 +326,16 @@ export function Register() {
 
     const nextFieldErrors: FieldErrors = {};
 
-    if (!role) nextFieldErrors.role = 'Please select an account type.';
+    if (!role) nextFieldErrors.role = t('auth.selectAccountType');
 
-    if (!isNonEmpty(identity.firstName)) nextFieldErrors.firstName = 'First name is required.';
-    if (!isNonEmpty(identity.lastName)) nextFieldErrors.lastName = 'Last name is required.';
-    if (!isNonEmpty(identity.country)) nextFieldErrors.country = 'Country is required.';
-    if (!isNonEmpty(identity.phone)) nextFieldErrors.phone = 'Phone number is required.';
+    if (!isNonEmpty(identity.firstName)) nextFieldErrors.firstName = t('auth.firstNameRequired');
+    if (!isNonEmpty(identity.lastName)) nextFieldErrors.lastName = t('auth.lastNameRequired');
+    if (!isNonEmpty(identity.country)) nextFieldErrors.country = t('auth.countryRequired');
+    if (!isNonEmpty(identity.phone)) nextFieldErrors.phone = t('auth.phoneRequired');
 
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors);
-      setError(Object.values(nextFieldErrors)[0] ?? 'Please fix the highlighted fields.');
+      setError(Object.values(nextFieldErrors)[0] ?? t('auth.fixHighlightedFields'));
       return;
     }
 
@@ -348,8 +350,8 @@ export function Register() {
       .join(' ');
 
     if (!role) {
-      setFieldErrors((prev) => ({ ...prev, role: 'Please select an account type.' }));
-      setError('Please select an account type.');
+      setFieldErrors((prev) => ({ ...prev, role: t('auth.selectAccountType') }));
+      setError(t('auth.selectAccountType'));
       return;
     }
 
@@ -368,8 +370,8 @@ export function Register() {
       const status = err instanceof BackendAuthError ? err.status : undefined;
 
       if (status === 409) {
-        setFieldErrors((prev) => ({ ...prev, email: 'An account with this email already exists.' }));
-        setError('An account with this email already exists.');
+        setFieldErrors((prev) => ({ ...prev, email: t('auth.accountExists') }));
+        setError(t('auth.accountExists'));
         return;
       }
 
@@ -379,7 +381,7 @@ export function Register() {
       }
 
       if (status === 400 && err instanceof BackendAuthError) {
-        const backendFieldErrors = mapBackendMessageToFieldErrors(err.message);
+        const backendFieldErrors = mapBackendMessageToFieldErrors(err.message, t);
         if (Object.keys(backendFieldErrors).length > 0) {
           setFieldErrors((prev) => ({ ...prev, ...backendFieldErrors }));
         }
@@ -388,12 +390,12 @@ export function Register() {
       }
 
       if (status === 503) {
-        setError('Service is temporarily unavailable. Please try again later.');
+        setError(t('auth.serviceUnavailable'));
         return;
       }
 
       if (status && status >= 500) {
-        setError('Server error. Please try again later.');
+        setError(t('auth.serverError'));
         return;
       }
 
@@ -402,7 +404,7 @@ export function Register() {
         return;
       }
 
-      setError('Could not create your account right now. Please try again.');
+      setError(t('auth.couldNotCreateAccount'));
     } finally {
       setIsSubmitting(false);
     }
@@ -416,25 +418,25 @@ export function Register() {
 
     const nextFieldErrors: FieldErrors = {};
 
-    if (!role) nextFieldErrors.role = 'Please select an account type.';
-    if (role && role !== 'starter') nextFieldErrors.role = 'Select Starter to use this form.';
+    if (!role) nextFieldErrors.role = t('auth.selectAccountType');
+    if (role && role !== 'starter') nextFieldErrors.role = t('auth.selectStarter');
 
-    if (!isNonEmpty(identity.firstName)) nextFieldErrors.firstName = 'First name is required.';
-    if (!isNonEmpty(identity.lastName)) nextFieldErrors.lastName = 'Last name is required.';
-    if (!isNonEmpty(identity.country)) nextFieldErrors.country = 'Country is required.';
-    if (!isNonEmpty(identity.phone)) nextFieldErrors.phone = 'Phone number is required.';
+    if (!isNonEmpty(identity.firstName)) nextFieldErrors.firstName = t('auth.firstNameRequired');
+    if (!isNonEmpty(identity.lastName)) nextFieldErrors.lastName = t('auth.lastNameRequired');
+    if (!isNonEmpty(identity.country)) nextFieldErrors.country = t('auth.countryRequired');
+    if (!isNonEmpty(identity.phone)) nextFieldErrors.phone = t('auth.phoneRequired');
 
-    if (!isNonEmpty(account.email)) nextFieldErrors.email = 'Email is required.';
+    if (!isNonEmpty(account.email)) nextFieldErrors.email = t('auth.emailRequired');
     if (account.password.length < PASSWORD_MIN_LENGTH) {
-      nextFieldErrors.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
+      nextFieldErrors.password = t('auth.passwordMinLength', { length: PASSWORD_MIN_LENGTH });
     }
     if (account.password !== account.confirm) {
-      nextFieldErrors.confirm = 'Passwords do not match.';
+      nextFieldErrors.confirm = t('auth.passwordsDoNotMatch');
     }
 
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors);
-      setError(Object.values(nextFieldErrors)[0] ?? 'Please fix the highlighted fields.');
+      setError(Object.values(nextFieldErrors)[0] ?? t('auth.fixHighlightedFields'));
       return;
     }
 
@@ -450,14 +452,14 @@ export function Register() {
 
     const nextFieldErrors: FieldErrors = {};
 
-    if (!role) nextFieldErrors.role = 'Please select an account type.';
+    if (!role) nextFieldErrors.role = t('auth.selectAccountType');
 
-    if (!isNonEmpty(account.email)) nextFieldErrors.email = 'Email is required.';
+    if (!isNonEmpty(account.email)) nextFieldErrors.email = t('auth.emailRequired');
     if (account.password.length < PASSWORD_MIN_LENGTH) {
-      nextFieldErrors.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
+      nextFieldErrors.password = t('auth.passwordMinLength', { length: PASSWORD_MIN_LENGTH });
     }
     if (account.password !== account.confirm) {
-      nextFieldErrors.confirm = 'Passwords do not match.';
+      nextFieldErrors.confirm = t('auth.passwordsDoNotMatch');
     }
 
     let providerPayload:
@@ -472,25 +474,25 @@ export function Register() {
 
     if (role === 'serviceProvider') {
       if (isLoadingServices) {
-        setError('Please wait while services are loading.');
+        setError(t('auth.servicesLoading'));
         return;
       }
 
       if (publicServices.length === 0) {
-        setError('No services are available yet. Ask an admin to create one first.');
+        setError(t('auth.noServicesAvailable'));
         return;
       }
 
-      if (!isNonEmpty(provider.businessName)) nextFieldErrors.businessName = 'Business name is required.';
-      if (!isNonEmpty(provider.service)) nextFieldErrors.service = 'Please select a service.';
-      if (!isNonEmpty(provider.location)) nextFieldErrors.location = 'Location is required.';
-      if (!isNonEmpty(provider.moneyRange)) nextFieldErrors.moneyRange = 'Money range is required.';
+      if (!isNonEmpty(provider.businessName)) nextFieldErrors.businessName = t('auth.businessNameRequired');
+      if (!isNonEmpty(provider.service)) nextFieldErrors.service = t('auth.serviceRequired');
+      if (!isNonEmpty(provider.location)) nextFieldErrors.location = t('auth.locationRequired');
+      if (!isNonEmpty(provider.moneyRange)) nextFieldErrors.moneyRange = t('auth.moneyRangeRequired');
 
       const normalizedServices = normalizeServiceRows(provider.services);
       const hasCompleteService = normalizedServices.some((service) => isNonEmpty(service.name) && isNonEmpty(service.price));
 
       if (!hasCompleteService) {
-        nextFieldErrors.services = 'Add at least one service with its price.';
+        nextFieldErrors.services = t('auth.servicesRequired');
       }
 
       const hasPartialService = normalizedServices.some(
@@ -500,7 +502,7 @@ export function Register() {
       );
 
       if (hasPartialService) {
-        nextFieldErrors.services = 'Each service row needs both a service name and a price.';
+        nextFieldErrors.services = t('auth.serviceRowIncomplete');
       }
 
       if (showAppLinks) {
@@ -508,32 +510,32 @@ export function Register() {
         const hasAppChoice = appLinks.webApp || appLinks.mobileApp;
 
         if (!hasAppChoice) {
-          nextFieldErrors.appLinks = 'Select web app or mobile app.';
+          nextFieldErrors.appLinks = t('auth.appLinksRequired');
         }
 
         if (appLinks.webApp && !isNonEmpty(appLinks.webAppUrl)) {
-          nextFieldErrors.webAppUrl = 'Web app link is required.';
+          nextFieldErrors.webAppUrl = t('auth.webAppUrlRequired');
         }
 
         if (appLinks.mobileApp) {
           const hasStoreChoice = appLinks.playStore || appLinks.appStore;
           if (!hasStoreChoice) {
-            nextFieldErrors.appLinks = 'Select Play Store or App Store for the mobile app.';
+            nextFieldErrors.appLinks = t('auth.storeLinksRequired');
           }
 
           if (appLinks.playStore && !isNonEmpty(appLinks.playStoreUrl)) {
-            nextFieldErrors.playStoreUrl = 'Play Store link is required.';
+            nextFieldErrors.playStoreUrl = t('auth.playStoreUrlRequired');
           }
 
           if (appLinks.appStore && !isNonEmpty(appLinks.appStoreUrl)) {
-            nextFieldErrors.appStoreUrl = 'App Store link is required.';
+            nextFieldErrors.appStoreUrl = t('auth.appStoreUrlRequired');
           }
         }
       }
 
       if (Object.keys(nextFieldErrors).length > 0) {
         setFieldErrors(nextFieldErrors);
-        setError(Object.values(nextFieldErrors)[0] ?? 'Please fix the highlighted fields.');
+        setError(Object.values(nextFieldErrors)[0] ?? t('auth.fixHighlightedFields'));
         return;
       }
 
@@ -551,7 +553,7 @@ export function Register() {
 
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors);
-      setError(Object.values(nextFieldErrors)[0] ?? 'Please fix the highlighted fields.');
+      setError(Object.values(nextFieldErrors)[0] ?? t('auth.fixHighlightedFields'));
       return;
     }
 
@@ -575,18 +577,18 @@ export function Register() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-3xl font-bold text-gray-900">Registration complete!</h2>
+              <h2 className="text-3xl font-bold text-gray-900">{t('auth.registrationComplete')}</h2>
               <p className="text-gray-600 max-w-md mx-auto">
                 {safeNext
-                  ? 'Your account has been created successfully. Redirecting you back to finish your request…'
-                  : 'Your account has been created successfully. You can now sign in to continue.'}
+                  ? t('auth.redirecting')
+                  : t('auth.accountCreated')}
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
                 <button type="button" className="ykb-button-primary" onClick={resetForm}>
-                  Register another account
+                  {t('auth.registerAnother')}
                 </button>
                 <Link to={safeNext ?? loginHref} className="ykb-button-outline">
-                  {safeNext ? 'Continue' : 'Go to login'}
+                  {safeNext ? t('auth.continue') : t('auth.goToLogin')}
                 </Link>
               </div>
             </div>
@@ -597,15 +599,15 @@ export function Register() {
                 <div className="space-y-6">
                   <div>
 
-                    <h1 className="text-3xl font-bold mb-6 text-white">Create account</h1>
+                    <h1 className="text-3xl font-bold mb-6 text-white">{t('auth.createAccountTitle')}</h1>
                     <p className="text-white/80 text-sm leading-relaxed">
-                      Join our platform as a Starter or Service Provider. Start booking services or grow your business today.
+                      {t('auth.createAccountDescription')}
                     </p>
                   </div>
 
                   <div className="border-t border-white/20 pt-6">
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-sm font-medium text-white/80">Registration progress</span>
+                      <span className="text-sm font-medium text-white/80">{t('auth.registrationProgress')}</span>
                       <span className="text-2xl font-bold">
                         {!role ? '—' : role === 'serviceProvider' ? `${step}/2` : '1/1'}
                       </span>
@@ -622,34 +624,34 @@ export function Register() {
                     <div className="space-y-3 pt-4">
                       <div className="flex items-center gap-3 text-sm">
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-secondary text-primary' : 'bg-white/20 text-white/60'}`}>1</div>
-                        <span className={step >= 1 ? 'text-white' : 'text-white/60'}>Personal Information</span>
+                        <span className={step >= 1 ? 'text-white' : 'text-white/60'}>{t('auth.personalInformation')}</span>
                       </div>
                       <div className="flex items-center gap-3 text-sm">
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step === 2 ? 'bg-secondary text-primary' : 'bg-white/20 text-white/60'}`}>2</div>
-                        <span className={step === 2 ? 'text-white font-medium' : 'text-white/60'}>Account Credentials</span>
+                        <span className={step === 2 ? 'text-white font-medium' : 'text-white/60'}>{t('auth.accountCredentials')}</span>
                       </div>
                     </div>
                   ) : role === 'starter' ? (
                     <div className="space-y-3 pt-4">
                       <div className="flex items-center gap-3 text-sm">
                         <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-secondary text-primary">1</div>
-                        <span className="text-white">Starter details</span>
+                        <span className="text-white">{t('auth.starterDetails')}</span>
                       </div>
                     </div>
                   ) : null}
 
                   <div className="pt-6 border-t border-white/20">
-                    <p className="text-xs uppercase tracking-wider text-secondary font-semibold mb-3">Selected account type</p>
+                    <p className="text-xs uppercase tracking-wider text-secondary font-semibold mb-3">{t('auth.selectedAccountType')}</p>
                     <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
                       <p className="font-semibold">
-                        {!role ? 'Select a type' : role === 'serviceProvider' ? 'Service Provider' : 'Starter'}
+                        {!role ? t('auth.selectType') : role === 'serviceProvider' ? t('auth.serviceProvider') : t('auth.starter')}
                       </p>
                       <p className="text-xs text-white/70 mt-1">
-                        {role === 'serviceProvider' 
-                          ? 'List services, manage bookings, grow your business' 
+                        {role === 'serviceProvider'
+                          ? t('auth.serviceProviderLongDescription')
                           : role === 'starter'
-                            ? 'Request services, book providers, get things done'
-                            : 'Choose Starter or Service Provider to begin.'}
+                            ? t('auth.starterLongDescription')
+                            : t('auth.chooseType')}
                       </p>
                     </div>
                   </div>
@@ -668,7 +670,7 @@ export function Register() {
                 >
                   {showRequestNotice ? (
                     <div className="ykb-alert ykb-alert-info">
-                      Create an account to submit your request. We’ll keep your filled form and bring you back after registration.
+                      {t('auth.requestNotice')}
                     </div>
                   ) : null}
 
@@ -679,7 +681,7 @@ export function Register() {
                   )}
 
                   <div>
-                    {renderFieldLabel('Register as', 'role')}
+                    {renderFieldLabel(t('auth.registerAs'), 'role')}
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <label
                         className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition ${
@@ -700,8 +702,8 @@ export function Register() {
                           className="mt-1 h-4 w-4 rounded border-border text-secondary focus:ring-secondary"
                         />
                         <span className="text-sm text-primary">
-                          <span className="block font-semibold">Starter</span>
-                          <span className="block text-xs text-textSecondary">Request services and book providers.</span>
+                          <span className="block font-semibold">{t('auth.starter')}</span>
+                          <span className="block text-xs text-textSecondary">{t('auth.starterDescription')}</span>
                         </span>
                       </label>
 
@@ -725,8 +727,8 @@ export function Register() {
                           className="mt-1 h-4 w-4 rounded border-border text-secondary focus:ring-secondary"
                         />
                         <span className="text-sm text-primary">
-                          <span className="block font-semibold">Service Provider</span>
-                          <span className="block text-xs text-textSecondary">List services and receive bookings.</span>
+                          <span className="block font-semibold">{t('auth.serviceProvider')}</span>
+                          <span className="block text-xs text-textSecondary">{t('auth.serviceProviderDescription')}</span>
                         </span>
                       </label>
                     </div>
@@ -734,12 +736,12 @@ export function Register() {
                   </div>
 
                   {role === '' ? (
-                    <div className="ykb-alert ykb-alert-info">Please choose Starter or Service Provider to continue.</div>
+                    <div className="ykb-alert ykb-alert-info">{t('auth.chooseType')}</div>
                   ) : role === 'starter' ? (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          {renderFieldLabel('First name', 'firstName')}
+                          {renderFieldLabel(t('auth.firstName'), 'firstName')}
                           <input
                             id="firstName"
                             required
@@ -755,7 +757,7 @@ export function Register() {
                         </div>
 
                         <div>
-                          {renderFieldLabel('Middle name', 'middleName', false)}
+                          {renderFieldLabel(t('auth.middleName'), 'middleName', false, t)}
                           <input
                             id="middleName"
                             value={identity.middleName}
@@ -768,7 +770,7 @@ export function Register() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          {renderFieldLabel('Last name', 'lastName')}
+                          {renderFieldLabel(t('auth.lastName'), 'lastName')}
                           <input
                             id="lastName"
                             required
@@ -784,7 +786,7 @@ export function Register() {
                         </div>
 
                         <div>
-                          {renderFieldLabel('Country', 'country')}
+                          {renderFieldLabel(t('auth.country'), 'country')}
                           <input
                             id="country"
                             required
@@ -801,7 +803,7 @@ export function Register() {
                       </div>
 
                       <div>
-                        {renderFieldLabel('Phone number', 'phone')}
+                        {renderFieldLabel(t('auth.phone'), 'phone')}
                         <input
                           id="phone"
                           required
@@ -818,7 +820,7 @@ export function Register() {
                       </div>
 
                       <div>
-                        {renderFieldLabel('Email address', 'email')}
+                        {renderFieldLabel(t('auth.emailAddress'), 'email')}
                         <input
                           id="email"
                           type="email"
@@ -836,7 +838,7 @@ export function Register() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          {renderFieldLabel('Password', 'password')}
+                          {renderFieldLabel(t('auth.password'), 'password')}
                           <div className="relative">
                             <input
                               id="password"
@@ -849,13 +851,13 @@ export function Register() {
                               }}
                               className={fieldClass('password', 'pr-10')}
                               autoComplete="new-password"
-                              placeholder={`Min. ${PASSWORD_MIN_LENGTH} characters`}
+                              placeholder={t('auth.minCharacters', { length: PASSWORD_MIN_LENGTH })}
                             />
                             <button
                               type="button"
                               onClick={() => setShowPassword((prev) => !prev)}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-textSecondary hover:text-primary transition"
-                              aria-label={showPassword ? 'Hide password' : 'Show password'}
+                              aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                             >
                               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
@@ -864,7 +866,7 @@ export function Register() {
                         </div>
 
                         <div>
-                          {renderFieldLabel('Confirm password', 'confirm')}
+                          {renderFieldLabel(t('auth.confirmPassword'), 'confirm')}
                           <div className="relative">
                             <input
                               id="confirm"
@@ -877,13 +879,13 @@ export function Register() {
                               }}
                               className={fieldClass('confirm', 'pr-10')}
                               autoComplete="new-password"
-                              placeholder="Confirm your password"
+                              placeholder={t('auth.confirmYourPassword')}
                             />
                             <button
                               type="button"
                               onClick={() => setShowConfirmPassword((prev) => !prev)}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-textSecondary hover:text-primary transition"
-                              aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                              aria-label={showConfirmPassword ? t('auth.hideConfirmPassword') : t('auth.showConfirmPassword')}
                             >
                               {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
@@ -897,7 +899,7 @@ export function Register() {
                         className="w-full ykb-button-primary disabled:opacity-60 disabled:cursor-not-allowed"
                         disabled={isSubmitting}
                       >
-                        {isSubmitting ? 'Creating account...' : 'Create starter account →'}
+                        {isSubmitting ? t('auth.creatingAccount') : t('auth.createStarterAccount')}
                       </button>
                     </>
                   ) : step === 1 ? (
@@ -905,7 +907,7 @@ export function Register() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          {renderFieldLabel('First name', 'firstName')}
+                          {renderFieldLabel(t('auth.firstName'), 'firstName')}
                           <input
                             id="firstName"
                             required
@@ -921,7 +923,7 @@ export function Register() {
                         </div>
 
                         <div>
-                          {renderFieldLabel('Middle name', 'middleName', false)}
+                          {renderFieldLabel(t('auth.middleName'), 'middleName', false, t)}
                           <input
                             id="middleName"
                             value={identity.middleName}
@@ -934,7 +936,7 @@ export function Register() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          {renderFieldLabel('Last name', 'lastName')}
+                          {renderFieldLabel(t('auth.lastName'), 'lastName')}
                           <input
                             id="lastName"
                             required
@@ -950,7 +952,7 @@ export function Register() {
                         </div>
 
                         <div>
-                          {renderFieldLabel('Country', 'country')}
+                          {renderFieldLabel(t('auth.country'), 'country')}
                           <input
                             id="country"
                             required
@@ -967,7 +969,7 @@ export function Register() {
                       </div>
 
                       <div>
-                        {renderFieldLabel('Phone number', 'phone')}
+                        {renderFieldLabel(t('auth.phone'), 'phone')}
                         <input
                           id="phone"
                           required
@@ -983,24 +985,28 @@ export function Register() {
                         {inlineError('phone')}
                       </div>
 
-                      <button type="submit" className="w-full ykb-button-primary disabled:opacity-60 disabled:cursor-not-allowed" disabled={isSubmitting}>
-                        Continue to Account Setup →
+                      <button
+                        type="submit"
+                        className="w-full ykb-button-primary disabled:opacity-60 disabled:cursor-not-allowed"
+                        disabled={isSubmitting}
+                      >
+                        {t('auth.continueAccountSetup')}
                       </button>
                     </>
                   ) : (
                     <div className="space-y-6">
                       <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        <h3 className="text-sm font-semibold text-gray-700 mb-2">Review your information</h3>
+                        <h3 className="text-sm font-semibold text-gray-700 mb-2">{t('auth.reviewInfo')}</h3>
                         <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div><span className="text-gray-500">Name:</span> {identity.firstName} {identity.middleName} {identity.lastName}</div>
-                          <div><span className="text-gray-500">Country:</span> {identity.country}</div>
-                          <div><span className="text-gray-500">Phone:</span> {identity.phone}</div>
-                          <div><span className="text-gray-500">Type:</span> {role === 'serviceProvider' ? 'Service Provider' : 'Starter'}</div>
+                          <div><span className="text-gray-500">{t('auth.name')}:</span> {identity.firstName} {identity.middleName} {identity.lastName}</div>
+                          <div><span className="text-gray-500">{t('auth.country')}:</span> {identity.country}</div>
+                          <div><span className="text-gray-500">{t('auth.phone')}:</span> {identity.phone}</div>
+                          <div><span className="text-gray-500">{t('auth.type')}:</span> {role === 'serviceProvider' ? t('auth.serviceProvider') : t('auth.starter')}</div>
                         </div>
                       </div>
 
                       <div>
-                        {renderFieldLabel('Email address', 'email')}
+                        {renderFieldLabel(t('auth.emailAddress'), 'email')}
                         <input
                           id="email"
                           type="email"
@@ -1018,7 +1024,7 @@ export function Register() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          {renderFieldLabel('Password', 'password')}
+                          {renderFieldLabel(t('auth.password'), 'password')}
                           <div className="relative">
                             <input
                               id="password"
@@ -1031,13 +1037,13 @@ export function Register() {
                               }}
                               className={fieldClass('password', 'pr-10')}
                               autoComplete="new-password"
-                              placeholder={`Min. ${PASSWORD_MIN_LENGTH} characters`}
+                              placeholder={t('auth.minCharacters', { length: PASSWORD_MIN_LENGTH })}
                             />
                             <button
                               type="button"
                               onClick={() => setShowPassword((prev) => !prev)}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-textSecondary hover:text-primary transition"
-                              aria-label={showPassword ? 'Hide password' : 'Show password'}
+                              aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                             >
                               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
@@ -1046,7 +1052,7 @@ export function Register() {
                         </div>
 
                         <div>
-                          {renderFieldLabel('Confirm password', 'confirm')}
+                          {renderFieldLabel(t('auth.confirmPassword'), 'confirm')}
                           <div className="relative">
                             <input
                               id="confirm"
@@ -1059,13 +1065,13 @@ export function Register() {
                               }}
                               className={fieldClass('confirm', 'pr-10')}
                               autoComplete="new-password"
-                              placeholder="Confirm your password"
+                              placeholder={t('auth.confirmYourPassword')}
                             />
                             <button
                               type="button"
                               onClick={() => setShowConfirmPassword((prev) => !prev)}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-textSecondary hover:text-primary transition"
-                              aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                              aria-label={showConfirmPassword ? t('auth.hideConfirmPassword') : t('auth.showConfirmPassword')}
                             >
                               {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
@@ -1076,14 +1082,14 @@ export function Register() {
 
                       {role === 'serviceProvider' && (
                         <div className="space-y-4 bg-surface rounded-lg p-5 border border-border">
-                          <h3 className="text-lg font-semibold text-gray-800">Business Information</h3>
+                          <h3 className="text-lg font-semibold text-gray-800">{t('auth.businessInfo')}</h3>
 
                           {serviceLoadError && (
                             <div className="ykb-alert ykb-alert-error">{serviceLoadError}</div>
                           )}
 
                           <div>
-                            {renderFieldLabel('Business / Company name', 'businessName')}
+                            {renderFieldLabel(t('auth.businessName'), 'businessName')}
                             <input
                               id="businessName"
                               required
@@ -1099,7 +1105,7 @@ export function Register() {
                           </div>
 
                           <div>
-                            {renderFieldLabel('Main service category', 'service')}
+                            {renderFieldLabel(t('auth.mainService'), 'service')}
                             <select
                               id="service"
                               required
@@ -1112,7 +1118,7 @@ export function Register() {
                               className={`${fieldClass('service')} disabled:opacity-50`}
                             >
                               <option value="">
-                                {isLoadingServices ? 'Loading services…' : 'Select a service'}
+                                {isLoadingServices ? t('auth.loadingServices') : t('auth.selectService')}
                               </option>
                               {publicServices.map((service) => (
                                 <option key={service.id} value={service.title}>
@@ -1131,7 +1137,7 @@ export function Register() {
                           )}
 
                           <div>
-                            {renderFieldLabel('Location / Service area', 'location')}
+                            {renderFieldLabel(t('auth.location'), 'location')}
                             <input
                               id="location"
                               required
@@ -1147,7 +1153,7 @@ export function Register() {
                           </div>
 
                           <div>
-                            {renderFieldLabel('Price range', 'moneyRange')}
+                            {renderFieldLabel(t('auth.moneyRange'), 'moneyRange')}
                             <input
                               id="moneyRange"
                               required
@@ -1165,8 +1171,8 @@ export function Register() {
                           {showAppLinks && (
                             <div className="space-y-4 rounded-lg border border-dashed border-gray-300 bg-white p-4">
                               <div>
-                                <h4 className="font-semibold text-gray-800">App links</h4>
-                                <p className="text-xs text-gray-500">Select the app types you provide and add the required links.</p>
+                                <h4 className="font-semibold text-gray-800">{t('auth.appLinks')}</h4>
+                                <p className="text-xs text-gray-500">{t('auth.appLinksDescription')}</p>
                               </div>
 
                               <div className="space-y-4">
@@ -1190,14 +1196,14 @@ export function Register() {
                                     className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                                   />
                                   <span className="text-sm text-gray-700">
-                                    <span className="font-semibold block">Web app</span>
-                                    <span className="text-xs text-gray-500">Show a web app link field.</span>
+                                    <span className="font-semibold block">{t('auth.webApp')}</span>
+                                    <span className="text-xs text-gray-500">{t('auth.webAppDescription')}</span>
                                   </span>
                                 </label>
 
                                 {provider.appLinks.webApp && (
                                   <div>
-                                    {renderFieldLabel('Web app link', 'webAppUrl')}
+                                    {renderFieldLabel(t('auth.webAppLink'), 'webAppUrl')}
                                     <input
                                       id="webAppUrl"
                                       required
@@ -1239,8 +1245,8 @@ export function Register() {
                                     className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                                   />
                                   <span className="text-sm text-gray-700">
-                                    <span className="font-semibold block">Mobile app</span>
-                                    <span className="text-xs text-gray-500">Show store options and their links.</span>
+                                    <span className="font-semibold block">{t('auth.mobileApp')}</span>
+                                    <span className="text-xs text-gray-500">{t('auth.mobileAppDescription')}</span>
                                   </span>
                                 </label>
 
@@ -1267,8 +1273,8 @@ export function Register() {
                                           className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                                         />
                                         <span className="text-sm text-gray-700">
-                                          <span className="font-semibold block">Play Store</span>
-                                          <span className="text-xs text-gray-500">Add the Android store link.</span>
+                                          <span className="font-semibold block">{t('auth.playStore')}</span>
+                                          <span className="text-xs text-gray-500">{t('auth.playStoreDescription')}</span>
                                         </span>
                                       </label>
 
@@ -1292,15 +1298,15 @@ export function Register() {
                                           className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                                         />
                                         <span className="text-sm text-gray-700">
-                                          <span className="font-semibold block">App Store</span>
-                                          <span className="text-xs text-gray-500">Add the iPhone store link.</span>
+                                          <span className="font-semibold block">{t('auth.appStore')}</span>
+                                          <span className="text-xs text-gray-500">{t('auth.appStoreDescription')}</span>
                                         </span>
                                       </label>
                                     </div>
 
                                     {provider.appLinks.playStore && (
                                       <div>
-                                        {renderFieldLabel('Play Store link', 'playStoreUrl')}
+                                        {renderFieldLabel(t('auth.playStoreLink'), 'playStoreUrl')}
                                         <input
                                           id="playStoreUrl"
                                           required
@@ -1322,7 +1328,7 @@ export function Register() {
 
                                     {provider.appLinks.appStore && (
                                       <div>
-                                        {renderFieldLabel('App Store link', 'appStoreUrl')}
+                                        {renderFieldLabel(t('auth.appStoreLink'), 'appStoreUrl')}
                                         <input
                                           id="appStoreUrl"
                                           required
@@ -1352,15 +1358,15 @@ export function Register() {
                           <div>
                             <div className="flex items-center justify-between mb-3">
                               <div>
-                                <h4 className="font-semibold text-gray-800">Services you provide</h4>
-                                <p className="text-xs text-gray-500">Add each service with its price</p>
+                                <h4 className="font-semibold text-gray-800">{t('auth.servicesYouProvide')}</h4>
+                                <p className="text-xs text-gray-500">{t('auth.addEachService')}</p>
                               </div>
                               <button
                                 type="button"
                                 onClick={addServiceRow}
                                 className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
                               >
-                                + Add service
+                                {t('auth.addService')}
                               </button>
                             </div>
 
@@ -1370,13 +1376,13 @@ export function Register() {
                                   <p className="text-sm font-medium text-gray-600">Service #{index + 1}</p>
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <input
-                                      placeholder="Service name (e.g. House cleaning)"
+                                      placeholder={t('auth.serviceNamePlaceholder')}
                                       value={serviceRow.name}
                                       onChange={(event) => updateServiceRow(index, 'name', event.target.value)}
                                       className="ykb-field text-sm"
                                     />
                                     <input
-                                      placeholder="Price (e.g. 15,000 RWF)"
+                                      placeholder={t('auth.pricePlaceholder')}
                                       value={serviceRow.price}
                                       onChange={(event) => updateServiceRow(index, 'price', event.target.value)}
                                       className="ykb-field text-sm"
@@ -1401,10 +1407,10 @@ export function Register() {
                           className="ykb-button-outline disabled:opacity-60 disabled:cursor-not-allowed"
                           disabled={isSubmitting}
                         >
-                          ← Back
+                          {t('auth.back')}
                         </button>
                         <button type="submit" className="flex-1 ykb-button-primary disabled:opacity-60 disabled:cursor-not-allowed" disabled={isSubmitting}>
-                          {isSubmitting ? 'Creating account...' : 'Complete registration →'}
+                          {isSubmitting ? t('auth.creatingAccount') : t('auth.completeRegistration')}
                         </button>
                       </div>
                     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import { ExternalLink, Globe } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ExternalLink, Globe, CreditCard } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import playStoreBadge from '../../assets/icons/playstore.png';
 import appStoreBadge from '../../assets/icons/appstore.png';
 import { BackendAuthError, getBackendSession } from '../../utils/backendAuth';
@@ -57,7 +58,38 @@ function buildAppLinkPreviews(provider: BackendProviderProfile): AppLinkPreview[
 	];
 }
 
-function AppLinkTile({ label, url, icon }: AppLinkPreview) {
+function SubscriptionsSection() {
+	const navigate = useNavigate();
+	const { t } = useTranslation();
+
+	return (
+		<section className="ykb-card">
+			<div className="flex items-center justify-between gap-4">
+				<div className="flex items-center gap-3">
+					<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/10">
+						<CreditCard className="h-5 w-5 text-secondary" />
+					</div>
+					<div>
+						<div className="text-sm font-semibold text-gray-900">{t('provider.subscriptionPlans')}</div>
+						<div className="text-xs text-textSecondary">{t('provider.upgradeServiceFeatures')}</div>
+					</div>
+				</div>
+				<button
+					onClick={() => navigate('/plans')}
+					className="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-secondary/90"
+				>
+					{t('provider.browsePlans')}
+				</button>
+			</div>
+		</section>
+	);
+}
+
+interface AppLinkTileProps extends AppLinkPreview {
+	t: (key: string) => string;
+}
+
+function AppLinkTile({ label, url, icon, t }: AppLinkTileProps) {
 	return (
 		<div className="rounded-xl border border-border bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
 			<div className="flex min-h-[96px] items-center justify-between gap-4">
@@ -67,7 +99,7 @@ function AppLinkTile({ label, url, icon }: AppLinkPreview) {
 					</div>
 					<div>
 						<div className="text-sm font-semibold text-gray-900">{label}</div>
-						<div className="text-xs text-textSecondary">{url ? 'Registered link' : 'Not provided'}</div>
+						<div className="text-xs text-textSecondary">{url ? t('provider.registeredLink') : t('provider.notProvided')}</div>
 					</div>
 				</div>
 				{url ? (
@@ -89,7 +121,7 @@ function AppLinkTile({ label, url, icon }: AppLinkPreview) {
 						{url}
 					</a>
 				) : (
-					<span className="text-textSecondary">No link saved yet.</span>
+					<span className="text-textSecondary">{t('provider.noLinkSavedYet')}</span>
 				)}
 			</div>
 		</div>
@@ -102,6 +134,7 @@ type PageState =
 	| { status: 'error'; message: string; statusCode?: number };
 
 export function ServiceProviderDashboard() {
+	const { t } = useTranslation();
 	const [state, setState] = useState<PageState>({ status: 'idle' });
 
 	const session = getBackendSession();
@@ -129,7 +162,7 @@ export function ServiceProviderDashboard() {
 					return;
 				}
 
-				setState({ status: 'error', message: 'Could not load your provider dashboard.' });
+				setState({ status: 'error', message: t('provider.couldNotLoadDashboard') });
 			}
 		};
 
@@ -137,83 +170,104 @@ export function ServiceProviderDashboard() {
 		return () => {
 			mounted = false;
 		};
-	}, [accessToken, userRole]);
+	}, [accessToken, userRole, t]);
 
 	return (
 		<main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pt-24">
 			<div className="ykb-container">
 				<header className="mb-6">
-					<h1 className="text-3xl font-bold text-primary">Service Provider Dashboard</h1>
-					<p className="mt-1 text-sm text-textSecondary">Your services & prices</p>
+					<h1 className="text-3xl font-bold text-primary">{t('provider.dashboard')}</h1>
+					<p className="mt-1 text-sm text-textSecondary">{t('provider.servicesAndPrices')}</p>
 				</header>
 
 				{userRole && userRole !== 'PROVIDER' ? (
 					<div className="ykb-card">
 						<div className="ykb-alert ykb-alert-warning">
-							This dashboard is only available for service provider accounts.
+							{t('provider.providerOnly')}
 						</div>
 						<div className="mt-4">
-							<Link to="/profile" className="ykb-button-outline">Go to profile</Link>
+							<Link to="/profile" className="ykb-button-outline">{t('provider.goToProfile')}</Link>
 						</div>
 					</div>
 				) : null}
 
 				{userRole && userRole !== 'PROVIDER' ? null : !accessToken ? (
 					<div className="ykb-card">
-						<div className="ykb-alert ykb-alert-info">Please log in to view your dashboard.</div>
+						<div className="ykb-alert ykb-alert-info">{t('provider.pleaseLogin')}</div>
 						<div className="mt-4">
-							<Link to="/login" className="ykb-button-primary">Go to login</Link>
+							<Link to="/login" className="ykb-button-primary">{t('provider.goToLogin')}</Link>
 						</div>
 					</div>
 				) : state.status === 'loading' || state.status === 'idle' ? (
 					<div className="ykb-card">
-						<p className="text-sm text-textSecondary">Loading your services…</p>
+						<p className="text-sm text-textSecondary">{t('provider.loadingServices')}</p>
 					</div>
 				) : state.status === 'error' ? (
 					<div className="ykb-card">
 						<div className="ykb-alert ykb-alert-error">{state.message}</div>
 						{state.statusCode === 401 ? (
 							<div className="mt-4">
-								<Link to="/login" className="ykb-button-primary">Login again</Link>
+								<Link to="/login" className="ykb-button-primary">{t('provider.loginAgain')}</Link>
 							</div>
 						) : null}
 					</div>
 				) : state.status === 'ready' ? (
-					<div className="grid grid-cols-1 gap-6">
+					<div className="grid grid-cols-1 gap-6">					<SubscriptionsSection />
 						<section className="ykb-card">
-							<div className="text-xs font-semibold uppercase tracking-[0.22em] text-textSecondary">Provider profile</div>
+							<div className="text-xs font-semibold uppercase tracking-[0.22em] text-textSecondary">{t('provider.profile')}</div>
 							<div className="mt-3 space-y-2">
 								<div>
-									<div className="text-xs text-textSecondary">Business name</div>
+									<div className="text-xs text-textSecondary">{t('provider.businessName')}</div>
 									<div className="font-semibold text-gray-900">{state.provider.businessName ?? '—'}</div>
 								</div>
 								<div>
-									<div className="text-xs text-textSecondary">Main service</div>
+									<div className="text-xs text-textSecondary">{t('provider.mainService')}</div>
 									<div className="font-semibold text-gray-900">{state.provider.mainService ?? '—'}</div>
 								</div>
 								<div>
-									<div className="text-xs text-textSecondary">Location</div>
+									<div className="text-xs text-textSecondary">{t('provider.locationField')}</div>
 									<div className="font-semibold text-gray-900">{state.provider.location ?? '—'}</div>
 								</div>
 								<div>
-									<div className="text-xs text-textSecondary">Money range</div>
+									<div className="text-xs text-textSecondary">{t('provider.moneyRange')}</div>
 									<div className="font-semibold text-gray-900">{state.provider.moneyRange ?? '—'}</div>
 								</div>
+							</div>
+							<div className="mt-6 rounded-lg border border-gray-200 bg-surface px-4 py-4">
+								<div className="flex items-center justify-between gap-4">
+									<div>
+										<div className="text-xs text-textSecondary">{t('provider.verificationStatus')}</div>
+										<div className="mt-1 text-base font-semibold text-gray-900">{state.provider.status}</div>
+									</div>
+									{state.provider.status === 'REJECTED' ? (
+										<span className="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-700">{t('provider.rejected')}</span>
+									) : state.provider.status === 'APPROVED' ? (
+										<span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700">{t('provider.approved')}</span>
+									) : (
+										<span className="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-sm font-semibold text-yellow-700">{t('provider.pending')}</span>
+									)}
+								</div>
+								{state.provider.status === 'REJECTED' && state.provider.rejectionReason ? (
+									<div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+										<div className="text-sm font-semibold text-red-800">{t('provider.rejectionReason')}</div>
+										<p className="mt-2 text-sm text-red-700">{state.provider.rejectionReason}</p>
+									</div>
+								) : null}
 							</div>
 						</section>
 
 						<section className="ykb-card">
 							<div className="flex items-center justify-between gap-4">
 								<div>
-									<div className="text-xs font-semibold uppercase tracking-[0.22em] text-textSecondary">App preview</div>
-									<h2 className="mt-2 text-xl font-semibold text-primary">Registered app links</h2>
+									<div className="text-xs font-semibold uppercase tracking-[0.22em] text-textSecondary">{t('provider.appPreview')}</div>
+									<h2 className="mt-2 text-xl font-semibold text-primary">{t('provider.registeredAppLinks')}</h2>
 								</div>
-								<div className="text-xs text-textSecondary">Preview from your registration details</div>
+								<div className="text-xs text-textSecondary">{t('provider.previewFromRegistration')}</div>
 							</div>
 
 							<div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
 								{buildAppLinkPreviews(state.provider).map((item) => (
-									<AppLinkTile key={item.label} {...item} />
+									<AppLinkTile key={item.label} {...item} t={t} />
 								))}
 							</div>
 						</section>
@@ -221,8 +275,8 @@ export function ServiceProviderDashboard() {
 						<section className="ykb-card">
 							<div className="flex items-center justify-between gap-4">
 								<div>
-									<div className="text-xs font-semibold uppercase tracking-[0.22em] text-textSecondary">Services</div>
-									<h2 className="mt-2 text-xl font-semibold text-primary">Services you provide</h2>
+									<div className="text-xs font-semibold uppercase tracking-[0.22em] text-textSecondary">{t('provider.services')}</div>
+									<h2 className="mt-2 text-xl font-semibold text-primary">{t('provider.servicesYouProvide')}</h2>
 								</div>
 							</div>
 
@@ -239,9 +293,7 @@ export function ServiceProviderDashboard() {
 										))}
 									</div>
 								) : (
-									<div className="ykb-alert ykb-alert-info">
-										No services listed yet.
-									</div>
+									<div className="ykb-alert ykb-alert-info">{t('provider.noServicesYet')}</div>
 								)}
 							</div>
 						</section>

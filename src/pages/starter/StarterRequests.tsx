@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BackendAuthError, getBackendSession } from '../../utils/backendAuth';
+import { BackendAuthError, getBackendSession, API_BASE, getBackendAuthHeaders } from '../../utils/backendAuth';
 import {
 	addMyBackendRequestNote,
 	fetchMyBackendRequests,
+	rateBackendRequest,
 	type BackendRequest,
 	type BackendRequestStatus,
 	updateMyBackendRequest,
@@ -24,7 +25,10 @@ function deriveRequestTitle(request: BackendRequest): string {
 	return service && service.length > 0 ? service : 'Service request';
 }
 
-function statusLabel(status: string): string {
+function statusLabel(status: string, customerResolvedAt?: string | null, adminConfirmedAt?: string | null, adminResolvedAt?: string | null): string {
+	// If marked as resolved by customer, admin confirmed provider, or admin directly resolved
+	if (customerResolvedAt || adminConfirmedAt || adminResolvedAt) return 'Resolved';
+	
 	const s = status as BackendRequestStatus;
 	if (s === 'PENDING') return 'Pending';
 	if (s === 'IN_REVIEW') return 'Received';
@@ -70,6 +74,8 @@ export function StarterRequests() {
 	const [savingId, setSavingId] = useState<string | null>(null);
 	const [noteId, setNoteId] = useState<string | null>(null);
 	const [noteText, setNoteText] = useState('');
+	const [ratingValue, setRatingValue] = useState(5);
+	const [updatingId, setUpdatingId] = useState<string | null>(null);
 	const [actionError, setActionError] = useState<string | null>(null);
 
 	const load = useCallback(async () => {
@@ -95,6 +101,66 @@ export function StarterRequests() {
 			setIsLoading(false);
 		}
 	}, [isAuthenticated]);
+
+	const markResolved = useCallback(
+		async (requestId: string) => {
+			setUpdatingId(requestId);
+			setActionError(null);
+
+			const updated = [...requests];
+			const idx = updated.findIndex((r) => r.id === requestId);
+			if (idx === -1) return;
+
+			const original = updated[idx];
+			updated[idx] = { ...original, providerResolvedAt: new Date().toISOString() };
+			setRequests(updated);
+
+			try {
+				const res = await fetch(`${API_BASE}/requests/${encodeURIComponent(requestId)}/provider-mark-resolved`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						...getBackendAuthHeaders(),
+					},
+				});
+
+				if (!res.ok) {
+					throw new Error(`Request failed (${res.status})`);
+				}
+
+				const json = (await res.json()) as { request?: BackendRequest };
+				if (json?.request?.id) {
+					setRequests((prev) => prev.map((r) => (r.id === requestId ? json.request! : r)));
+				}
+			} catch (err) {
+				setRequests([...updated]);
+				setActionError(err instanceof Error ? err.message : 'Could not mark as resolved.');
+			} finally {
+				setUpdatingId(null);
+			}
+		},
+		[requests]
+	);
+
+	const submitRating = useCallback(
+		async (requestId: string) => {
+			setSavingId(requestId);
+			setActionError(null);
+			try {
+				await rateBackendRequest(requestId, ratingValue);
+				setRatingValue(5);
+				await load();
+			} catch (err) {
+				const status = err instanceof BackendAuthError ? err.status : undefined;
+				if (status === 401) setActionError('Please login again to rate this request.');
+				else if (status === 0 && err instanceof BackendAuthError) setActionError(err.message);
+				else setActionError(err instanceof Error ? err.message : 'Could not submit rating.');
+			} finally {
+				setSavingId(null);
+			}
+		},
+		[ratingValue, load]
+	);
 
 	useEffect(() => {
 		void Promise.resolve().then(load);
@@ -150,7 +216,7 @@ export function StarterRequests() {
 										</div>
 										<div className="text-right">
 											<div className="text-xs font-semibold uppercase tracking-[0.18em] text-textSecondary">Status</div>
-											<div className="text-sm font-bold text-primary">{statusLabel(r.status)}</div>
+											<div className="text-sm font-bold text-primary">{statusLabel(r.status, r.customerResolvedAt, r.adminConfirmedAt, r.adminResolvedAt)}</div>
 										</div>
 									</div>
 
@@ -269,71 +335,153 @@ export function StarterRequests() {
 										</div>
 									) : (
 										<div className="mt-3">
-											{noteId !== r.id ? (
+											{r.status === 'IN_REVIEW' && !r.customerResolvedAt && !r.providerResolvedAt && (
 												<button
 													type="button"
-													className="ykb-button-outline px-3 py-1.5 text-xs"
-													onClick={() => {
-														setActionError(null);
-														setEditingId(null);
-														setNoteId(r.id);
-														setNoteText('');
-													}}
+													onClick={() => void markResolved(r.id)}
+													disabled={updatingId === r.id}
+													className="w-full ykb-button-solid py-2 px-3 text-sm rounded-lg disabled:opacity-50 disabled:cursor-not-allowed mb-3"
 												>
-													Add note
+													{updatingId === r.id ? 'Marking as resolved...' : 'Mark as Resolved'}
 												</button>
-											) : (
-												<div className="space-y-3 rounded-xl border border-border bg-surface p-3">
-													<div>
-														<label className="block text-xs font-semibold uppercase tracking-[0.18em] text-textSecondary mb-1">New note</label>
-														<textarea
-															className="ykb-field py-2 text-sm min-h-24"
-															value={noteText}
-															onChange={(e) => setNoteText(e.target.value)}
-															placeholder="Add more details or changes…"
-														/>
-													</div>
+											)}
 
-													<div className="flex flex-col sm:flex-row gap-2">
-														<button
-															type="button"
-															disabled={savingId === r.id}
-															className="ykb-button-solid px-4 py-2 text-sm disabled:opacity-70"
-															onClick={async () => {
-																if (!noteText.trim()) return;
-																setSavingId(r.id);
-																setActionError(null);
-																try {
-																	await addMyBackendRequestNote(r.id, noteText.trim());
-																	setNoteId(null);
-																	setNoteText('');
-																	await load();
-																} catch (err) {
-																	const status = err instanceof BackendAuthError ? err.status : undefined;
-																	if (status === 401) setActionError('Please login again to add a note.');
-																	else if (status === 0 && err instanceof BackendAuthError) setActionError(err.message);
-																	else setActionError(err instanceof Error ? err.message : 'Could not add note.');
-																} finally {
-																	setSavingId(null);
-																}
-															}}
-														>
-															{savingId === r.id ? 'Saving…' : 'Save note'}
-														</button>
-
-														<button
-															type="button"
-															className="ykb-button-outline px-4 py-2 text-sm"
-															onClick={() => {
-																setNoteId(null);
-																setNoteText('');
-																setActionError(null);
-															}}
-														>
-															Cancel
-														</button>
-													</div>
+											{r.providerResolvedAt && r.requiresAdminConfirmation && (
+												<div className="mb-3 p-3 rounded bg-blue-100 border border-blue-300 text-sm text-blue-900">
+													⏳ Waiting for admin confirmation (marked resolved on {formatDate(r.providerResolvedAt)})
 												</div>
+											)}
+
+											{r.customerResolvedAt && (
+												<div className="mb-3 p-3 rounded bg-yellow-100 border border-yellow-300 text-sm text-yellow-900">
+													✓ Marked as resolved on {formatDate(r.customerResolvedAt)}
+												</div>
+											)}
+
+											{(r.customerResolvedAt || r.adminConfirmedAt || r.adminResolvedAt) && !r.rating ? (
+									<div className="space-y-3 rounded-xl border border-border bg-surface p-3 mt-3">
+										<div>
+											<label className="block text-xs font-semibold uppercase tracking-[0.18em] text-textSecondary mb-3">
+												Rate your satisfaction (1-10)
+											</label>
+											<div className="grid grid-cols-5 gap-2">
+												{Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
+													<label key={num} className="flex flex-col items-center cursor-pointer">
+														<input
+															type="radio"
+															name={`rating-${r.id}`}
+															value={num}
+															checked={ratingValue === num}
+															onChange={() => setRatingValue(num)}
+															className="mb-1"
+														/>
+														<span className={`text-xs font-semibold px-2 py-1 rounded text-center w-full ${
+															ratingValue === num
+																? 'bg-primary text-white'
+																: 'bg-gray-200 text-gray-700'
+														}`}>
+															{num}
+														</span>
+														{(num === 1 || num === 5 || num === 10) && (
+															<span className="text-xs text-textSecondary mt-1">
+																{num === 1 ? 'Poor' : num === 5 ? 'Fair' : 'Excellent'}
+															</span>
+														)}
+													</label>
+												))}
+											</div>
+										</div>
+
+										<div className="flex flex-col sm:flex-row gap-2">
+											<button
+												type="button"
+												disabled={savingId === r.id}
+												className="ykb-button-solid px-4 py-2 text-sm disabled:opacity-70"
+												onClick={async () => {
+													await submitRating(r.id);
+												}}
+											>
+												{savingId === r.id ? 'Submitting…' : 'Submit rating'}
+											</button>
+										</div>
+									</div>
+								) : r.rating ? (
+									<div className="p-3 rounded bg-green-100 border border-green-300 text-sm text-green-900 mt-3">
+												</div>
+											) : null}
+
+											{r.status !== 'RESOLVED' && !r.customerResolvedAt && !r.adminConfirmedAt && !r.adminResolvedAt && (
+												<>
+													{noteId !== r.id ? (
+														<button
+															type="button"
+															className="ykb-button-outline px-3 py-1.5 text-xs"
+															onClick={() => {
+																setActionError(null);
+																setEditingId(null);
+																setNoteId(r.id);
+																setNoteText('');
+															}}
+														>
+															Add note
+														</button>
+													) : (
+														<div className="space-y-3 rounded-xl border border-border bg-surface p-3">
+															<div>
+																<label className="block text-xs font-semibold uppercase tracking-[0.18em] text-textSecondary mb-1">
+																	New note
+																</label>
+																<textarea
+																	className="ykb-field py-2 text-sm min-h-24"
+																	value={noteText}
+																	onChange={(e) => setNoteText(e.target.value)}
+																	placeholder="Add more details or changes…"
+																/>
+															</div>
+
+															<div className="flex flex-col sm:flex-row gap-2">
+																<button
+																	type="button"
+																	disabled={savingId === r.id}
+																	className="ykb-button-solid px-4 py-2 text-sm disabled:opacity-70"
+																	onClick={async () => {
+																		if (!noteText.trim()) return;
+																		setSavingId(r.id);
+																		setActionError(null);
+																		try {
+																			await addMyBackendRequestNote(r.id, noteText.trim());
+																			setNoteId(null);
+																			setNoteText('');
+																			await load();
+																		} catch (err) {
+																			const status = err instanceof BackendAuthError ? err.status : undefined;
+																			if (status === 401) setActionError('Please login again to add a note.');
+																			else if (status === 0 && err instanceof BackendAuthError)
+																				setActionError(err.message);
+																			else setActionError(err instanceof Error ? err.message : 'Could not add note.');
+																		} finally {
+																			setSavingId(null);
+																		}
+																	}}
+																>
+																	{savingId === r.id ? 'Saving…' : 'Save note'}
+																</button>
+
+																<button
+																	type="button"
+																	className="ykb-button-outline px-4 py-2 text-sm"
+																	onClick={() => {
+																		setNoteId(null);
+																		setNoteText('');
+																		setActionError(null);
+																	}}
+																>
+																	Cancel
+																</button>
+															</div>
+														</div>
+													)}
+												</>
 											)}
 										</div>
 									)}

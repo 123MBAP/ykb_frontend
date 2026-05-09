@@ -2,11 +2,13 @@ import { NavLink, Outlet } from 'react-router-dom';
 
 const navItems: Array<{ to: string; label: string }> = [
   { to: '/admin', label: 'Dashboard' },
+  { to: '/admin/users', label: 'Users' },
   { to: '/admin/providers', label: 'Service Providers' },
   { to: '/admin/services', label: 'Services' },
   { to: '/admin/requests', label: 'Requests' },
   { to: '/admin/translators', label: 'Translator Languages' },
   { to: '/admin/starter-guide', label: 'Starter Guide' },
+  { to: '/admin/plans', label: 'Plans' },
 ];
 
 function AdminTab(props: { to: string; label: string; isLast: boolean }) {
@@ -32,7 +34,7 @@ export function AdminLayout() {
   return (
     <div className="relative">
       <div className="ykb-container">
-        <div className="pt-16">
+        <div className="pt-24">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-sm font-bold text-primary">Admin</div>
             <nav className="max-w-full overflow-x-auto">

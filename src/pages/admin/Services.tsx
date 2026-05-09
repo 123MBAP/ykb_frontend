@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Sparkles, HelpCircle, Calendar, Home, Globe, ShoppingBag, Coffee, Car, Heart, Pencil } from 'lucide-react';
+import { ArrowRight, Calendar, Home, Globe, ShoppingBag, Coffee, Car, Heart, Pencil, Upload, Loader } from 'lucide-react';
 import { useEffect, useState, type MouseEvent, type ReactNode } from 'react';
+import { uploadServiceImage } from '../../utils/uploadImage';
 
 interface ServiceCardProps {
     title: string;
     description: string;
     icon?: ReactNode;
+    imageUrl?: string | null;
     count?: number;
     variant?: 'default' | 'compact' | 'featured' | 'touch';
     onRequest?: (serviceName: string) => void;
@@ -20,6 +22,7 @@ function ServiceCard({
     title,
     description,
     icon,
+    imageUrl,
     count,
     variant = 'default',
     onRequest,
@@ -103,7 +106,17 @@ function ServiceCard({
 
             <div className={`relative z-10 flex h-full flex-col ${typeof count === 'number' ? 'pt-4' : ''}`}>
                 <div className="mb-4">
-                    <div className={getIconStyles()}>{icon || <Sparkles className="h-5 w-5" />}</div>
+                    <div className={getIconStyles()}>
+                        {imageUrl ? (
+                            <img 
+                                src={imageUrl} 
+                                alt={title} 
+                                className="w-full h-full object-cover"
+                            />
+                        ) : icon ? (
+                            icon
+                        ) : null}
+                    </div>
                 </div>
 
                 <h3 className="mb-2 text-xl font-semibold text-primary transition-colors duration-300 group-hover:text-secondary">
@@ -134,12 +147,15 @@ type PublicService = {
     id: number;
     title: string;
     description: string;
+    imageUrl?: string | null;
+    imagePublicId?: string | null;
 };
 
 type ServiceSlot = {
     service: PublicService | null;
-    draft: { title: string; description: string };
+    draft: { title: string; description: string; imageUrl: string; imagePublicId: string };
     saving: boolean;
+    uploading: boolean;
     error: string | null;
 };
 
@@ -174,8 +190,11 @@ function buildSlots(services: PublicService[]): ServiceSlot[] {
             draft: {
                 title: service?.title ?? '',
                 description: service?.description ?? '',
+                imageUrl: service?.imageUrl ?? '',
+                imagePublicId: service?.imagePublicId ?? '',
             },
             saving: false,
+            uploading: false,
             error: null,
         });
     }
@@ -194,7 +213,7 @@ const getServiceIcon = (title: string): ReactNode => {
         Concierge: <Coffee className="h-5 w-5" />,
     };
 
-    return iconMap[title] || <Sparkles className="h-5 w-5" />;
+    return iconMap[title] || null;
 };
 
 export function AdminServices() {
@@ -264,17 +283,20 @@ export function AdminServices() {
         const slot = slots[index];
         if (!slot) return;
 
-        const title = slot.draft.title.trim();
-        const description = slot.draft.description.trim();
+        const title = slot.draft.title?.trim() || '';
+        const description = slot.draft.description?.trim() || '';
+        const imageUrl = slot.draft.imageUrl?.trim() || '';
 
-        if (!title || !description) {
+        if (!title || !description || !imageUrl) {
             setSlots((prev) =>
                 prev.map((currentSlot, slotIndex) =>
                     slotIndex === index
                         ? {
                               ...currentSlot,
                               saving: false,
-                              error: !title ? 'Service title is required.' : 'Description is required.',
+                              error: !title ? 'Service title is required.' : 
+                                     !description ? 'Description is required.' : 
+                                     'Service image is required.',
                           }
                         : currentSlot
                 )
@@ -290,10 +312,16 @@ export function AdminServices() {
 
         try {
             if (!slot.service) {
+                console.log('Creating new service with:', { title, description, imageUrl: slot.draft.imageUrl, imagePublicId: slot.draft.imagePublicId });
                 const response = await fetch(`${API_BASE}/services`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, description }),
+                    body: JSON.stringify({ 
+                        title, 
+                        description, 
+                        imageUrl: slot.draft.imageUrl,
+                        imagePublicId: slot.draft.imagePublicId 
+                    }),
                 });
 
                 if (!response.ok) {
@@ -310,7 +338,12 @@ export function AdminServices() {
                             ? {
                                   ...currentSlot,
                                   service: json.service!,
-                                  draft: { title: json.service!.title, description: json.service!.description },
+                                  draft: { 
+                                      title: json.service!.title, 
+                                      description: json.service!.description,
+                                      imageUrl: json.service!.imageUrl ?? '',
+                                      imagePublicId: json.service!.imagePublicId ?? ''
+                                  },
                                   saving: false,
                                   error: null,
                               }
@@ -318,10 +351,16 @@ export function AdminServices() {
                     )
                 );
             } else {
+                console.log('Updating service with:', { title, description, imageUrl: slot.draft.imageUrl, imagePublicId: slot.draft.imagePublicId });
                 const response = await fetch(`${API_BASE}/services/${slot.service.id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, description }),
+                    body: JSON.stringify({ 
+                        title, 
+                        description, 
+                        imageUrl: slot.draft.imageUrl,
+                        imagePublicId: slot.draft.imagePublicId 
+                    }),
                 });
 
                 if (!response.ok) {
@@ -338,7 +377,12 @@ export function AdminServices() {
                             ? {
                                   ...currentSlot,
                                   service: json.service!,
-                                  draft: { title: json.service!.title, description: json.service!.description },
+                                  draft: { 
+                                      title: json.service!.title, 
+                                      description: json.service!.description,
+                                      imageUrl: json.service!.imageUrl ?? '',
+                                      imagePublicId: json.service!.imagePublicId ?? ''
+                                  },
                                   saving: false,
                                   error: null,
                               }
@@ -361,18 +405,12 @@ export function AdminServices() {
 
     return (
         <main className="min-h-screen bg-white pt-16 text-gray-900">
-            <section className="relative overflow-hidden border-b border-border bg-white py-10">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.06),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(212,175,55,0.08),_transparent_30%)]" />
-                <div className="absolute left-1/2 top-6 h-56 w-56 -translate-x-1/2 rounded-full bg-secondary/10 blur-3xl" />
-
-                <div className="ykb-container relative text-center">
-                    <div className={`animate-on-scroll ${isVisible.hero ? 'visible' : ''}`} id="hero">
-                        <h1 className="mt-5 text-3xl font-bold tracking-tight text-primary md:text-4xl lg:text-5xl">
-                            <span className="block">Our</span>
-                            <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Services</span>
-                        </h1>
-
-                        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-textSecondary">
+            <section className="border-b border-border bg-white py-8">
+                <div className="ykb-container">
+                    <div className="max-w-2xl">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-textSecondary">Manage services</p>
+                        <h1 className="text-3xl font-semibold text-primary md:text-4xl">Services</h1>
+                        <p className="mt-2 max-w-xl text-base leading-relaxed text-textSecondary">
                             Comprehensive concierge solutions tailored to your needs in Kigali.
                         </p>
                     </div>
@@ -457,6 +495,83 @@ export function AdminServices() {
                                             />
                                         </div>
 
+                                        <div>
+                                            <label className="mb-1.5 block text-sm font-semibold text-primary" htmlFor="admin-service-image">
+                                                Service Image *
+                                            </label>
+                                            <input
+                                                id="admin-service-image"
+                                                type="file"
+                                                accept="image/*"
+                                                disabled={activeSlot.uploading}
+                                                onChange={async (event) => {
+                                                    const file = event.target.files?.[0];
+                                                    if (!file) return;
+
+                                                    setSlots((prev) =>
+                                                        prev.map((currentSlot, slotIndex) =>
+                                                            slotIndex === activeEditIndex
+                                                                ? { ...currentSlot, uploading: true, error: null }
+                                                                : currentSlot
+                                                        )
+                                                    );
+
+                                                    try {
+                                                        const result = await uploadServiceImage(file);
+                                                        console.log('Upload succeeded, updating state:', result);
+
+                                                        setSlots((prev) =>
+                                                            prev.map((currentSlot, slotIndex) =>
+                                                                slotIndex === activeEditIndex
+                                                                    ? {
+                                                                          ...currentSlot,
+                                                                          draft: {
+                                                                              ...currentSlot.draft,
+                                                                              imageUrl: result.url,
+                                                                              imagePublicId: result.publicId,
+                                                                          },
+                                                                          uploading: false,
+                                                                          error: null,
+                                                                      }
+                                                                    : currentSlot
+                                                            )
+                                                        );
+                                                    } catch (error) {
+                                                        const message = error instanceof Error ? error.message : 'Failed to upload image';
+                                                        console.error('Upload error:', message);
+                                                        setSlots((prev) =>
+                                                            prev.map((currentSlot, slotIndex) =>
+                                                                slotIndex === activeEditIndex
+                                                                    ? {
+                                                                          ...currentSlot,
+                                                                          uploading: false,
+                                                                          error: message,
+                                                                      }
+                                                                    : currentSlot
+                                                            )
+                                                        );
+                                                    }
+                                                    event.target.value = '';
+                                                }}
+                                                className="ykb-field"
+                                            />
+                                            {activeSlot.uploading ? (
+                                                <div className="mt-2 flex items-center gap-2">
+                                                    <Loader className="h-4 w-4 animate-spin text-primary" />
+                                                    <span className="text-sm text-textSecondary">Uploading image...</span>
+                                                </div>
+                                            ) : activeSlot.draft.imageUrl ? (
+                                                <div className="mt-2">
+                                                    <img
+                                                        src={activeSlot.draft.imageUrl}
+                                                        alt="Service preview"
+                                                        className="h-20 w-20 object-cover rounded border border-border"
+                                                    />
+                                                    <p className="mt-1 text-xs text-textSecondary">Image uploaded successfully</p>
+                                                </div>
+                                            ) : null}
+                                        </div>
+
                                         {activeSlot.error ? <div className="ykb-alert ykb-alert-error">{activeSlot.error}</div> : null}
 
                                         <button
@@ -478,8 +593,6 @@ export function AdminServices() {
                             {slots.map((slot, index) => {
                                 const displayTitle = slot.service?.title || `Service ${index + 1}`;
                                 const displayDescription = slot.service?.description || 'Click to add a title and description.';
-                                const icon = getServiceIcon(slot.service?.title ?? displayTitle);
-                                const count = index + 1;
 
                                 return (
                                     <div
@@ -500,50 +613,64 @@ export function AdminServices() {
                                                 }
                                             }}
                                         >
-                                            <div className="rounded-lg border border-border bg-white p-5 transition-colors duration-200 hover:border-secondary/30 hover:bg-surface/60">
-                                                <div className="mb-3 flex justify-center text-primary text-base font-semibold">{count}</div>
-
-                                                <div className="flex items-center justify-between gap-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface text-primary">
-                                                            {icon}
+                                            <div className="rounded-lg border border-border bg-white transition-colors duration-200 hover:border-secondary/30 hover:bg-surface/60 overflow-hidden">
+                                                {/* Image section */}
+                                                <div className="relative h-40 bg-surface/50 flex items-center justify-center overflow-hidden">
+                                                    {slot.draft.imageUrl ? (
+                                                        <img 
+                                                            src={slot.draft.imageUrl} 
+                                                            alt={slot.service?.title || 'Service'} 
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="flex flex-col items-center justify-center gap-2 text-textSecondary">
+                                                            <Upload className="h-8 w-8" />
+                                                            <span className="text-xs">Add image</span>
                                                         </div>
-                                                        <div className="min-w-0">
-                                                            <h3 className="text-base font-semibold text-primary">{displayTitle}</h3>
-                                                            <p className="line-clamp-2 text-sm text-textSecondary">{displayDescription}</p>
-                                                        </div>
+                                                    )}
+                                                    <div className="absolute top-2 right-2 rounded-full border border-border bg-white px-2.5 py-1 text-xs font-semibold text-primary">
+                                                        {index + 1}
                                                     </div>
-
-                                                    <span className="shrink-0 rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-textSecondary">
-                                                        {slot.service ? 'Saved' : 'Empty'}
-                                                    </span>
                                                 </div>
 
-                                                <div className="mt-4 flex items-center justify-between gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            if (!slot.service) return;
-                                                            goToProviders(slot.service.title);
-                                                        }}
-                                                        disabled={!slot.service}
-                                                        className="ykb-button-primary disabled:cursor-not-allowed disabled:opacity-60"
-                                                    >
-                                                        Go to Providers
-                                                    </button>
+                                                {/* Content section */}
+                                                <div className="p-4">
+                                                    <div className="flex items-start justify-between gap-2 mb-3">
+                                                        <div className="min-w-0 flex-1">
+                                                            <h3 className="text-sm font-semibold text-primary truncate">{displayTitle}</h3>
+                                                            <p className="line-clamp-2 text-xs text-textSecondary mt-1">{displayDescription}</p>
+                                                        </div>
+                                                        <span className="shrink-0 rounded-full border border-border bg-surface px-2 py-0.5 text-xs font-semibold text-textSecondary">
+                                                            {slot.service ? 'Saved' : 'Empty'}
+                                                        </span>
+                                                    </div>
 
-                                                    <button
-                                                        type="button"
-                                                        onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            setActiveEditIndex(index);
-                                                        }}
-                                                        className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-white text-textSecondary transition-colors hover:bg-surface/60 hover:text-primary"
-                                                        aria-label={`Edit ${displayTitle}`}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </button>
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                if (!slot.service) return;
+                                                                goToProviders(slot.service.title);
+                                                            }}
+                                                            disabled={!slot.service}
+                                                            className="flex-1 ykb-button-primary text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                                                        >
+                                                            Providers
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                setActiveEditIndex(index);
+                                                            }}
+                                                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-white text-textSecondary transition-colors hover:bg-surface/60 hover:text-primary"
+                                                            aria-label={`Edit ${displayTitle}`}
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -569,6 +696,7 @@ export function AdminServices() {
                                                 title={slot.service.title}
                                                 description={slot.service.description}
                                                 icon={getServiceIcon(slot.service.title)}
+                                                imageUrl={slot.service.imageUrl}
                                                 count={count}
                                                 variant="touch"
                                                 className="h-full"
@@ -590,43 +718,7 @@ export function AdminServices() {
                 </div>
             </section>
 
-            <section className="border-t border-border bg-white py-10">
-                <div className="ykb-container">
-                    <div
-                        className={`animate-on-scroll rounded-lg border border-border bg-surface/50 p-6 text-center ${isVisible.cta ? 'visible' : ''}`}
-                        id="cta"
-                    >
-                        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-secondary/20 bg-secondary/10">
-                            <HelpCircle className="h-8 w-8 text-secondary" />
-                        </div>
 
-                        <h2 className="text-2xl font-semibold text-primary md:text-3xl">Don't see what you need?</h2>
-
-                        <p className="mx-auto mb-5 mt-3 max-w-xl text-base leading-relaxed text-textSecondary">
-                            Can't find exactly what you're looking for? We offer custom services tailored to your specific
-                            needs. Get in touch with us today.
-                        </p>
-
-                        <div className="flex flex-col justify-center gap-4 sm:flex-row">
-                            <button
-                                onClick={() => navigate(`/request?service=${encodeURIComponent('Service Provider Booking')}`)}
-                                className="ykb-button-outline"
-                            >
-                                <span>Book a Service Provider</span>
-                                <ArrowRight className="h-4 w-4" />
-                            </button>
-
-                            <button
-                                onClick={() => navigate(`/request?service=${encodeURIComponent('Custom Service')}`)}
-                                className="ykb-button-primary"
-                            >
-                                <span>Request Custom Service</span>
-                                <ArrowRight className="h-4 w-4" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </section>
         </main>
     );
 }

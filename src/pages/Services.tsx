@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, BookOpenText, CircleHelp, Compass, ExternalLink, Languages, Smartphone } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ServiceCard } from '../components/ServiceCard';
 import { openWhatsApp } from '../utils/whatsapp';
 
@@ -7,6 +8,8 @@ type PublicService = {
   id: number;
   title: string;
   description: string;
+  imageUrl?: string | null;
+  imagePublicId?: string | null;
 };
 
 type Language = {
@@ -125,6 +128,7 @@ function parseServiceOfferings(value: unknown): ProviderServiceOffering[] {
 }
 
 export function Services() {
+  const { t } = useTranslation();
   const [services, setServices] = useState<PublicService[]>([]);
   const [languages, setLanguages] = useState<Language[]>([]);
   const [guideCategories, setGuideCategories] = useState<StarterGuideCategory[]>([]);
@@ -133,10 +137,10 @@ export function Services() {
   const [error, setError] = useState<string | null>(null);
 
   const sectionLinks = [
-    { id: 'all-services', label: 'All Services' },
-    { id: 'translator', label: 'Translator' },
-    { id: 'apps', label: 'Apps' },
-    { id: 'starter-guide', label: 'Starter Guide' },
+    { id: 'all-services', label: t('services.allServices') },
+    { id: 'translator', label: t('services.translator') },
+    { id: 'apps', label: t('services.apps') },
+    { id: 'starter-guide', label: t('services.starterGuide') },
   ];
 
   useEffect(() => {
@@ -280,10 +284,37 @@ export function Services() {
       <section className="ykb-section bg-[#fdfbf7]">
         <div className="ykb-container">
           <div className="mb-6">
-            <h1 className="text-3xl md:text-4xl font-serif text-start font-bold text-primary mb-2">Services</h1>
-            <p className="text-sm text-textSecondary">
-              Explore everything in one place. Use the top section menu to jump quickly.
+            <h1 className="text-3xl md:text-4xl font-serif text-start font-bold text-primary mb-2">{t('services.pageTitle')}</h1>
+            <p className="text-sm text-textSecondary max-w-3xl">
+              {t('services.pageDescription')}
             </p>
+          </div>
+
+          <div className="mb-8 grid gap-4 rounded-3xl border border-secondary/25 bg-white p-5 shadow-sm sm:grid-cols-[1.6fr_1fr]">
+            <div>
+              <h2 className="text-xl font-semibold text-primary mb-2">{t('services.whatWeDo')}</h2>
+              <p className="mb-4 text-sm text-textSecondary">
+                {t('services.whatWeDoDescription')}
+              </p>
+              <ul className="space-y-2 text-sm text-textSecondary">
+                <li>• {t('services.customConcierge')}</li>
+                <li>• {t('services.starterGuideService')}</li>
+                <li>• {t('services.hardToFind')}</li>
+              </ul>
+            </div>
+            <div className="rounded-3xl bg-secondary/5 p-5">
+              <h3 className="text-lg font-semibold text-primary mb-3">{t('services.needHelpNow')}</h3>
+              <p className="mb-4 text-sm text-textSecondary">
+                {t('services.needHelpDescription')}
+              </p>
+              <button
+                onClick={() => openWhatsApp('Hello Your Kigali Bestie, I need help booking a custom service or provider.')}
+                className="ykb-button-primary w-full"
+              >
+                <span>{t('services.helpMeBook')}</span>
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           <div className="sticky top-16 z-20 mb-8 rounded-2xl border border-secondary/25 bg-linear-to-r from-secondary/10 via-white to-primary/5 p-3 shadow-gold backdrop-blur">
@@ -305,11 +336,11 @@ export function Services() {
             className="scroll-mt-28 mb-12 rounded-3xl border border-secondary/25 border-l-8 border-l-secondary bg-linear-to-br from-secondary/10 via-white to-white p-4 sm:p-6 lg:p-8 shadow-sm"
           >
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-2xl font-bold text-primary">Our Core Services</h2>
-              <span className="ykb-pill">Up to 11 services</span>
+              <h2 className="text-2xl font-bold text-primary">{t('services.ourCoreServices')}</h2>
+              <span className="ykb-pill">{t('services.upToServices')}</span>
             </div>
             <p className="mb-4 text-sm text-textSecondary">
-              These are the main service categories your clients can request most often.
+              {t('services.coreServicesDescription')}
             </p>
 
             {status === 'loading' || status === 'idle' ? (
@@ -331,6 +362,7 @@ export function Services() {
                     key={service.id}
                     title={service.title}
                     description={service.description}
+                    imageUrl={service.imageUrl}
                     count={index + 1}
                   />
                 ))}
@@ -344,10 +376,10 @@ export function Services() {
           >
             <div className="mb-4 flex items-center gap-3">
               <Languages className="h-6 w-6 text-primary" />
-              <h2 className="text-2xl font-bold text-primary">Translator Section</h2>
+              <h2 className="text-2xl font-bold text-primary">{t('services.translatorBooking')}</h2>
             </div>
             <p className="mb-4 text-sm text-textSecondary">
-              Choose a language and request paid translation support directly from this page.
+              {t('services.translatorDescription')}
             </p>
 
             {languages.length === 0 ? (
@@ -389,7 +421,7 @@ export function Services() {
                         }
                         className="mt-4 ykb-button-primary w-full"
                       >
-                        <span>Book Translator</span>
+                        <span>{t('services.bookTranslator')}</span>
                         <ArrowRight className="h-4 w-4" />
                       </button>
                     </article>
@@ -405,10 +437,10 @@ export function Services() {
           >
             <div className="mb-4 flex items-center gap-3">
               <Smartphone className="h-6 w-6 text-primary" />
-              <h2 className="text-2xl font-bold text-primary">Apps Section</h2>
+              <h2 className="text-2xl font-bold text-primary">{t('services.localProviderApps')}</h2>
             </div>
             <p className="mb-4 text-sm text-textSecondary">
-              Available apps provided directly by registered service providers.
+              {t('services.appsDescription')}
             </p>
 
             {providerApps.length === 0 ? (
@@ -432,7 +464,7 @@ export function Services() {
                           rel="noreferrer"
                           className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm text-primary hover:border-secondary/40"
                         >
-                          <span>Web App</span>
+                          <span>{t('services.webApp')}</span>
                           <ExternalLink className="h-4 w-4" />
                         </a>
                       ) : null}
@@ -444,7 +476,7 @@ export function Services() {
                           rel="noreferrer"
                           className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm text-primary hover:border-secondary/40"
                         >
-                          <span>Play Store</span>
+                          <span>{t('services.playStore')}</span>
                           <ExternalLink className="h-4 w-4" />
                         </a>
                       ) : null}
@@ -456,7 +488,7 @@ export function Services() {
                           rel="noreferrer"
                           className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm text-primary hover:border-secondary/40"
                         >
-                          <span>App Store</span>
+                          <span>{t('services.appStore')}</span>
                           <ExternalLink className="h-4 w-4" />
                         </a>
                       ) : null}
@@ -467,16 +499,66 @@ export function Services() {
             )}
           </section>
 
+          <section className="scroll-mt-28 mb-12 rounded-3xl border border-border border-l-8 border-l-amber-400 bg-linear-to-br from-amber-50 via-white to-surface p-4 sm:p-6 lg:p-8 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <BookOpenText className="h-6 w-6 text-primary" />
+              <h2 className="text-2xl font-bold text-primary">{t('services.bestieMadeGuide')}</h2>
+            </div>
+            <p className="mb-4 text-sm text-textSecondary">
+              {t('services.guideDescription')}
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <article className="ykb-card">
+                <h3 className="text-base font-semibold text-primary mb-2">{t('services.first24Hours')}</h3>
+                <ul className="space-y-2 text-sm text-textSecondary">
+                  <li>• Get a SIM card at the airport or from MTN/Airtel branches in Kigali.</li>
+                  <li>• Mobile money is the easiest way to pay locally, with cash and cards also accepted.</li>
+                  <li>• Use airport forex bureaus or nearby exchange branches for safe currency conversion.</li>
+                </ul>
+              </article>
+              <article className="ykb-card">
+                <h3 className="text-base font-semibold text-primary mb-2">{t('services.emergenciesEssentials')}</h3>
+                <ul className="space-y-2 text-sm text-textSecondary">
+                  <li>• Recommended hospitals and emergency numbers to keep handy.</li>
+                  <li>• Police, ambulance, and urgent support contacts for peace of mind.</li>
+                  <li>• Safe food delivery and transport apps like Vuba Vuba, Yego Cabs, and Move.</li>
+                </ul>
+              </article>
+              <article className="ykb-card">
+                <h3 className="text-base font-semibold text-primary mb-2">{t('services.wifiConnectivity')}</h3>
+                <ul className="space-y-2 text-sm text-textSecondary">
+                  <li>• Mobile data is widely available through MTN and Airtel.</li>
+                  <li>• Many hotels, apartments and cafes offer Wi-Fi access.</li>
+                  <li>• Local options include Mango 4G and Canal Box for reliable home internet.</li>
+                </ul>
+              </article>
+              <article className="ykb-card">
+                <h3 className="text-base font-semibold text-primary mb-2">{t('services.housingSupport')}</h3>
+                <ul className="space-y-2 text-sm text-textSecondary">
+                  <li>• We can help you book Airbnb, hotels, apartments, or long-term stays in Kigali and beyond.</li>
+                  <li>• Our service includes choosing the right location, room count, and budget for your needs.</li>
+                  <li>• Housing bookings are charged a small support fee so we can manage your request quickly and safely.</li>
+                </ul>
+                <button
+                  onClick={() => openWhatsApp('Hello, I need help booking housing in Rwanda.')} 
+                  className="mt-4 ykb-button-primary w-full"
+                >
+                  <span>{t('services.helpMeBookHousing')}</span>
+                </button>
+              </article>
+            </div>
+          </section>
+
           <section
             id="starter-guide"
             className="scroll-mt-28 rounded-3xl border border-border border-l-8 border-l-textSecondary bg-linear-to-br from-primary/5 via-white to-surface p-4 sm:p-6 lg:p-8 shadow-sm"
           >
             <div className="mb-4 flex items-center gap-3">
               <Compass className="h-6 w-6 text-primary" />
-              <h2 className="text-2xl font-bold text-primary">Starter Guide Section</h2>
+              <h2 className="text-2xl font-bold text-primary">{t('services.starterGuideSection')}</h2>
             </div>
             <p className="mb-4 text-sm text-textSecondary">
-              Practical Kigali onboarding tips grouped in one easy section.
+              {t('services.guideSectionDescription')}
             </p>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -505,15 +587,15 @@ export function Services() {
             <div className="mt-6 ykb-card">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-primary">Need personalized help?</h3>
-                  <p className="text-sm text-textSecondary">Talk to Your Kigali Bestie and get direct support today.</p>
+                  <h3 className="text-lg font-semibold text-primary">{t('services.needPersonalizedHelp')}</h3>
+                  <p className="text-sm text-textSecondary">{t('services.personalizedHelpDescription')}</p>
                 </div>
                 <button
                   onClick={() => openWhatsApp('Hello, I would like personalized support from Your Kigali Bestie.')}
                   className="ykb-button-primary"
                 >
                   <CircleHelp className="h-4 w-4" />
-                  <span>Contact Support</span>
+                  <span>{t('services.contactSupport')}</span>
                 </button>
               </div>
             </div>

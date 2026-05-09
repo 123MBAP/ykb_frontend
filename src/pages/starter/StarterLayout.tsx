@@ -29,7 +29,7 @@ export function StarterLayout() {
 	return (
 		<div className="relative">
 			<div className="ykb-container">
-				<div className="pt-16">
+				<div className="pt-24">
 					<div className="mb-4 flex items-center justify-between gap-3">
 						<div className="text-sm font-bold text-primary">Starter</div>
 						<nav className="max-w-full overflow-x-auto">

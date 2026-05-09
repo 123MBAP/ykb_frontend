@@ -55,13 +55,22 @@ export function AdminProviderDetails() {
 
   return (
     <main className="pt-16">
+      <section className="border-b border-border bg-white py-8">
+        <div className="ykb-container">
+          <div className="max-w-2xl">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-textSecondary">Provider details</p>
+            <h1 className="text-3xl font-semibold text-primary md:text-4xl">Service Provider</h1>
+            <p className="mt-2 max-w-xl text-base leading-relaxed text-textSecondary">
+              Profile & services
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section className="ykb-section bg-dark-light">
         <div className="ykb-container">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-bold text-primary">Service Provider</h1>
-              <p className="mt-1 text-sm text-textSecondary">Profile & services</p>
-            </div>
+            <div></div>
             <Link to="/admin/providers" className="ykb-button-outline">
               Back
             </Link>

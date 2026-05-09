@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Phone } from 'lucide-react';
+import { Menu, X, Phone, MessageCircle, Mail } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { openWhatsApp } from '../utils/whatsapp';
 import { getBackendSession, isBackendAdmin, logoutBackend } from '../utils/backendAuth';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import logo from '../assets/images/logo.png';
 
 export function Navbar() {
+    const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const location = useLocation();
@@ -26,23 +29,23 @@ export function Navbar() {
     }, []);
 
     useEffect(() => {
-        setIsOpen(false);
+        setTimeout(() => setIsOpen(false), 0);
     }, [location]);
 
     const profilePath = isBackendProvider ? '/provider/profile' : '/profile';
 
     const navLinks = [
-        { path: '/', label: 'Home' },
-        { path: '/services', label: 'Services' },
-        { path: '/subscribe', label: 'Support' },
+        { path: '/', label: t('navigation.home') },
+        { path: '/services', label: t('navigation.services') },
+        { path: '/subscribe', label: t('navigation.subscribe') },
         ...(isLoggedIn
             ? [
-                  ...(isBackendCustomer ? [] : [{ path: profilePath, label: 'Profile' }]),
-                  { path: dashboardPath, label: 'Dashboard' },
+                  ...(isBackendCustomer ? [] : [{ path: profilePath, label: t('common.profile') }]),
+                  { path: dashboardPath, label: t('common.dashboard') },
               ]
             : [
-                  { path: '/login', label: 'Login' },
-                  { path: '/register', label: 'Register' },
+                  { path: '/login', label: t('navigation.login') },
+                  { path: '/register', label: t('navigation.register') },
               ]),
     ];
 
@@ -55,14 +58,60 @@ export function Navbar() {
         openWhatsApp('Hello, I would like to book a service');
     };
 
+    const handleWhatsAppContact = () => {
+        openWhatsApp('Hello, I would like to get in touch with you');
+    };
+
+    const handlePhoneCall = () => {
+        window.location.href = 'tel:+250788123456';
+    };
+
+    const handleEmail = () => {
+        window.location.href = 'mailto:info@yourkigalibestie.com';
+    };
+
     return (
-        <nav
-            className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-                scrolled
-                    ? 'bg-white/95 backdrop-blur-xl border-b border-border shadow-sm'
-                    : 'bg-white/80 backdrop-blur-md border-b border-border/60'
-            }`}
-        >
+        <>
+            {/* Contact Navigation Bar */}
+            <div className="fixed top-0 w-full z-40 bg-secondary text-white py-2 transition-all duration-300">
+                <div className="ykb-container">
+                    <div className="flex justify-center items-center gap-6 text-sm">
+                        <button
+                            onClick={handleWhatsAppContact}
+                            className="flex items-center gap-2 hover:text-gray-200 transition-colors duration-200"
+                            aria-label="Contact via WhatsApp"
+                        >
+                            <MessageCircle className="w-4 h-4" />
+                            <span className="hidden sm:inline">WhatsApp</span>
+                        </button>
+                        <button
+                            onClick={handlePhoneCall}
+                            className="flex items-center gap-2 hover:text-gray-200 transition-colors duration-200"
+                            aria-label="Call us"
+                        >
+                            <Phone className="w-4 h-4" />
+                            <span className="hidden sm:inline">+250798891543</span>
+                        </button>
+                        <button
+                            onClick={handleEmail}
+                            className="flex items-center gap-2 hover:text-gray-200 transition-colors duration-200"
+                            aria-label="Send email"
+                        >
+                            <Mail className="w-4 h-4" />
+                            <span className="hidden sm:inline">yourkigalibestie@gmail.com</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Main Navigation Bar */}
+            <nav
+                className={`fixed top-8 w-full z-50 transition-all duration-300 ${
+                    scrolled
+                        ? 'bg-white/95 backdrop-blur-xl border-b border-border shadow-sm'
+                        : 'bg-white/80 backdrop-blur-md border-b border-border/60'
+                }`}
+            >
             <div className="ykb-container">
                 <div className="flex justify-between items-center h-16">
                     <Link to="/" className="flex items-center gap-2 group">
@@ -77,6 +126,7 @@ export function Navbar() {
                     </Link>
 
                     <div className="hidden md:flex items-center gap-3">
+
                         <div className="flex">
                             <div className="flex items-stretch">
                                 {navLinks.map((link) => {
@@ -96,14 +146,15 @@ export function Navbar() {
                                                     ? ''
                                                     : 'after:absolute after:right-0 after:top-2 after:bottom-2 after:w-px after:bg-border'
                                             }`}
-                                        >
+                                          >
                                             {link.label}
-                                        </Link>
+                                                    </Link>
                                     );
                                 })}
-                            </div>
+                </div>
                         </div>
 
+                        <LanguageSwitcher />
 <button
                             onClick={handleBookNow}
                             className="flex items-center gap-2 bg-secondary hover:bg-secondary/90 text-white font-semibold px-4 py-2 rounded-xl transition-all duration-200 text-sm shadow-gold"
@@ -120,7 +171,7 @@ export function Navbar() {
                                 }}
                                 className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-xl transition-all duration-200 text-sm"
                             >
-                                <span>Logout</span>
+                                <span>{t('common.logout')}</span>
                             </button>
                         )}
                     </div>
@@ -140,6 +191,9 @@ export function Navbar() {
                     }`}
                 >
                     <div className="py-4 space-y-1 border-t border-border mt-2 bg-white">
+                        <div className="px-4 py-2">
+                            <LanguageSwitcher />
+                        </div>
                         {navLinks.map((link) => (
                             <Link
                                 key={link.path}
@@ -170,12 +224,13 @@ export function Navbar() {
                                 }}
                                 className="w-full mt-3 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2.5 rounded-xl transition-all duration-200 text-sm"
                             >
-                                <span>Logout</span>
+                                <span>{t('common.logout')}</span>
                             </button>
                         )}
                     </div>
                 </div>
             </div>
-        </nav>
+            </nav>
+        </>
     );
 }

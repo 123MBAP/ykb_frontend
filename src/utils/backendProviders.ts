@@ -33,6 +33,7 @@ export type BackendProviderProfile = {
   moneyRange?: string | null;
   serviceOfferings?: ProviderServiceOffering[] | null;
   bio?: string | null;
+  rejectionReason?: string | null;
   profileImageUrl?: string | null;
   profileImagePublicId?: string | null;
   user?: {

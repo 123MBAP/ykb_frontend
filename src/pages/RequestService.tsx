@@ -135,6 +135,12 @@ export function RequestService() {
     return serviceOptions[0] ?? '';
   }, [form.service, lockedService, serviceOptions]);
 
+  const serviceDescription = useMemo(() => {
+    if (!effectiveService) return '';
+    const service = publicServices.find((s) => s.title === effectiveService);
+    return service?.description ?? '';
+  }, [effectiveService, publicServices]);
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitError(null);
@@ -299,6 +305,15 @@ export function RequestService() {
                         </option>
                       ))}
                     </select>
+                  )}
+
+                  {serviceDescription && (
+                    <div className="mt-2 p-3 rounded-lg bg-secondary/5 border border-secondary/10">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-textSecondary mb-1">Service Details</p>
+                      <p className="text-sm leading-relaxed text-textSecondary">
+                        {serviceDescription}
+                      </p>
+                    </div>
                   )}
                 </div>
 

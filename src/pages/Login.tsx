@@ -1,11 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { login as loginMock, seedAuthIfEmpty } from '../utils/auth';
 import { BackendAuthError, loginBackend } from '../utils/backendAuth';
 import logo from '../assets/images/logo.png';
 
 export function Login() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -49,12 +51,12 @@ export function Login() {
     setSuccess(false);
 
     const nextFieldErrors: { email?: string; password?: string } = {};
-    if (email.trim().length === 0) nextFieldErrors.email = 'Email is required.';
-    if (password.trim().length === 0) nextFieldErrors.password = 'Password is required.';
+    if (email.trim().length === 0) nextFieldErrors.email = t('auth.emailRequired');
+    if (password.trim().length === 0) nextFieldErrors.password = t('auth.passwordRequired');
 
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors);
-      setError(Object.values(nextFieldErrors)[0] ?? 'Please fix the highlighted fields.');
+      setError(Object.values(nextFieldErrors)[0] ?? t('auth.fixHighlightedFields'));
       return;
     }
 
@@ -72,7 +74,7 @@ export function Login() {
       const status = err instanceof BackendAuthError ? err.status : undefined;
 
       if (status === 401 || status === 404) {
-        setFieldErrors({ email: 'Check your email address.', password: 'Incorrect email or password.' });
+        setFieldErrors({ email: t('auth.checkEmail'), password: t('auth.incorrectCredentials') });
       }
 
       // If the backend says "invalid credentials", fall back to the existing mocked auth
@@ -90,12 +92,12 @@ export function Login() {
       }
 
       if (status === 401 || status === 404) {
-        setError('Incorrect email or password.');
+        setError(t('auth.incorrectCredentials'));
         return;
       }
 
       if (status === 429) {
-        setError('Too many attempts. Please wait a moment and try again.');
+        setError(t('auth.tooManyAttempts'));
         return;
       }
 
@@ -110,11 +112,11 @@ export function Login() {
       }
 
       if (status && status >= 500) {
-        setError('Server error. Please try again later.');
+        setError(t('auth.serverError'));
         return;
       }
 
-      setError('Could not sign in right now. Please try again.');
+      setError(t('auth.couldNotSignIn'));
     }
   };
 
@@ -128,9 +130,9 @@ export function Login() {
             <div className="md:w-2/5 bg-primary p-8 text-white">
               <div className="space-y-6">
                 <div>
-                  <h1 className="text-3xl font-bold mb-4 text-white pt-16">Welcome back</h1>
+                  <h1 className="text-3xl font-bold mb-4 text-white pt-16">{t('auth.welcomeBack')}</h1>
                   <p className="text-white/80 text-sm leading-relaxed">
-                    Sign in to your account to manage requests, bookings, and your profile.
+                    {t('auth.signInDescription')}
                   </p>
                 </div>
 
@@ -140,19 +142,19 @@ export function Login() {
                       <svg className="w-5 h-5 text-secondary mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <span className="text-sm text-white/80">Access your dashboard and bookings</span>
+                      <span className="text-sm text-white/80">{t('auth.accessDashboard')}</span>
                     </div>
                     <div className="flex items-start gap-3">
                       <svg className="w-5 h-5 text-secondary mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <span className="text-sm text-white/80">Manage service requests & providers</span>
+                      <span className="text-sm text-white/80">{t('auth.manageRequests')}</span>
                     </div>
                     <div className="flex items-start gap-3">
                       <svg className="w-5 h-5 text-secondary mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
-                      <span className="text-sm text-white/80">Update your profile and preferences</span>
+                      <span className="text-sm text-white/80">{t('auth.updateProfile')}</span>
                     </div>
                   </div>
                 </div>
@@ -168,13 +170,13 @@ export function Login() {
               <form onSubmit={submit} className="space-y-5">
                 {showRequestNotice ? (
                   <div className="ykb-alert ykb-alert-info">
-                    You need to sign in (or create an account) to submit your request. We saved your filled form and will bring you back after login.
+                    {t('auth.requestNotice')}
                   </div>
                 ) : null}
 
                 <div>
                   <label className="block text-sm font-semibold text-primary mb-1.5" htmlFor="email">
-                    Email address
+                    {t('auth.emailAddress')}
                   </label>
                   <input
                     id="email"
@@ -197,10 +199,10 @@ export function Login() {
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
                     <label className="block text-sm font-semibold text-primary" htmlFor="password">
-                      Password
+                      {t('auth.password')}
                     </label>
                     <Link to="/forgot-password" className="text-xs font-semibold text-secondary hover:text-accent transition">
-                      Forgot password?
+                      {t('auth.forgotPassword')}
                     </Link>
                   </div>
                   <div className="relative">
@@ -221,7 +223,7 @@ export function Login() {
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-textSecondary hover:text-primary transition"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -239,12 +241,12 @@ export function Login() {
 
                 {success && (
                   <div className="ykb-alert ykb-alert-success">
-                    Logged in. Redirecting...
+                    {t('auth.loggedIn')}
                   </div>
                 )}
 
                 <button type="submit" className="w-full ykb-button-primary">
-                  Sign in →
+                  {t('auth.signInButton')}
                 </button>
 
                 <div className="relative my-4">
@@ -252,13 +254,13 @@ export function Login() {
                     <div className="w-full border-t border-gray-200"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">New to our platform?</span>
+                    <span className="px-2 bg-white text-gray-500">{t('auth.newToPlatform')}</span>
                   </div>
                 </div>
 
                 <Link to={registerHref}>
                   <button type="button" className="w-full ykb-button-outline">
-                    Create an account
+                    {t('auth.createAccount')}
                   </button>
                 </Link>
               </form>

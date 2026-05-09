@@ -7,6 +7,7 @@ import {
 	type BackendProviderProfile,
 	type ProviderServiceOffering,
 } from '../../utils/backendProviders';
+import { useTranslation } from 'react-i18next';
 
 type PageState =
 	| { status: 'idle' | 'loading' }
@@ -14,6 +15,7 @@ type PageState =
 	| { status: 'error'; message: string; statusCode?: number };
 
 export function ServiceProviderServices() {
+	const { t } = useTranslation();
 	const [state, setState] = useState<PageState>({ status: 'idle' });
 	const [isSaving, setIsSaving] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export function ServiceProviderServices() {
 					return;
 				}
 
-				setState({ status: 'error', message: 'Could not load your services.' });
+				setState({ status: 'error', message: t('provider.couldNotLoadServices') });
 			}
 		};
 
@@ -60,7 +62,7 @@ export function ServiceProviderServices() {
 		return () => {
 			mounted = false;
 		};
-	}, [accessToken, userRole]);
+	}, [accessToken, userRole, t]);
 
 	const provider = state.status === 'ready' ? state.provider : null;
 	const offerings: ProviderServiceOffering[] = useMemo(() => {
@@ -100,9 +102,9 @@ export function ServiceProviderServices() {
 	};
 
 	const validateDraft = (): string | null => {
-		if (draft.name.trim().length === 0) return 'Service name is required.';
-		if (draft.price.trim().length === 0) return 'Service price is required.';
-		if (draft.description.trim().length === 0) return 'Service description is required.';
+		if (draft.name.trim().length === 0) return t('provider.serviceNameRequired');
+		if (draft.price.trim().length === 0) return t('provider.servicePriceRequired');
+		if (draft.description.trim().length === 0) return t('provider.serviceDescriptionRequired');
 		return null;
 	};
 
@@ -113,9 +115,9 @@ export function ServiceProviderServices() {
 		try {
 			const updated = await updateProviderMeProfile({ serviceOfferings: nextOfferings });
 			setState({ status: 'ready', provider: updated });
-			setSaveSuccess('Saved.');
+			setSaveSuccess(t('provider.saved'));
 		} catch (err) {
-			const message = err instanceof BackendAuthError ? err.message : 'Could not save your services.';
+			const message = err instanceof BackendAuthError ? err.message : t('provider.couldNotSaveServices');
 			setSaveError(message);
 		} finally {
 			setIsSaving(false);
@@ -152,7 +154,7 @@ export function ServiceProviderServices() {
 	const deleteOffering = async (index: number) => {
 		const item = offerings[index];
 		if (!item) return;
-		const ok = window.confirm(`Delete "${item.name}"?`);
+		const ok = window.confirm(t('provider.deleteConfirm', { name: item.name }));
 		if (!ok) return;
 		setSaveSuccess(null);
 		setSaveError(null);
@@ -163,38 +165,38 @@ export function ServiceProviderServices() {
 		<main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pt-24">
 			<div className="ykb-container">
 				<header className="mb-6">
-					<h1 className="text-3xl font-bold text-primary">Your Services</h1>
-					<p className="mt-1 text-sm text-textSecondary">Services & prices you provide</p>
+					<h1 className="text-3xl font-bold text-primary">{t('provider.yourServices')}</h1>
+					<p className="mt-1 text-sm text-textSecondary">{t('provider.servicesAndPrices')}</p>
 				</header>
 
 				{userRole && userRole !== 'PROVIDER' ? (
 					<div className="ykb-card">
 						<div className="ykb-alert ykb-alert-warning">
-							This page is only available for service provider accounts.
+							{t('provider.providerOnly')}
 						</div>
 						<div className="mt-4">
-							<Link to="/profile" className="ykb-button-outline">Go to profile</Link>
+							<Link to="/profile" className="ykb-button-outline">{t('provider.goToProfile')}</Link>
 						</div>
 					</div>
 				) : null}
 
 				{userRole && userRole !== 'PROVIDER' ? null : !accessToken ? (
 					<div className="ykb-card">
-						<div className="ykb-alert ykb-alert-info">Please log in to view your services.</div>
+						<div className="ykb-alert ykb-alert-info">{t('provider.pleaseLogin')}</div>
 						<div className="mt-4">
-							<Link to="/login" className="ykb-button-primary">Go to login</Link>
+							<Link to="/login" className="ykb-button-primary">{t('provider.goToLogin')}</Link>
 						</div>
 					</div>
 				) : state.status === 'loading' || state.status === 'idle' ? (
 					<div className="ykb-card">
-						<p className="text-sm text-textSecondary">Loading your services…</p>
+						<p className="text-sm text-textSecondary">{t('provider.loadingServices')}</p>
 					</div>
 				) : state.status === 'error' ? (
 					<div className="ykb-card">
 						<div className="ykb-alert ykb-alert-error">{state.message}</div>
 						{state.statusCode === 401 ? (
 							<div className="mt-4">
-								<Link to="/login" className="ykb-button-primary">Login again</Link>
+								<Link to="/login" className="ykb-button-primary">{t('provider.loginAgain')}</Link>
 							</div>
 						) : null}
 					</div>
@@ -203,8 +205,8 @@ export function ServiceProviderServices() {
 						<section className="ykb-card">
 							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 								<div>
-									<div className="text-xs font-semibold uppercase tracking-[0.22em] text-textSecondary">Manage</div>
-									<h2 className="mt-2 text-xl font-semibold text-primary">Create & edit your services</h2>
+									<div className="text-xs font-semibold uppercase tracking-[0.22em] text-textSecondary">{t('provider.createEditServices')}</div>
+									<h2 className="mt-2 text-xl font-semibold text-primary">{t('provider.createEditServices')}</h2>
 								</div>
 								<div className="flex items-center gap-2">
 									<button
@@ -212,7 +214,7 @@ export function ServiceProviderServices() {
 										disabled={isSaving}
 										className="ykb-button-primary"
 									>
-										Add service
+										{t('provider.addServiceButton')}
 									</button>
 								</div>
 							</div>
@@ -224,7 +226,7 @@ export function ServiceProviderServices() {
 						{editorMode ? (
 							<section className="ykb-card">
 								<div className="text-xs font-semibold uppercase tracking-[0.22em] text-textSecondary">
-									{editorMode === 'add' ? 'New service' : 'Edit service'}
+									{editorMode === 'add' ? t('provider.newService') : t('provider.editService')}
 								</div>
 
 								{draftError ? <div className="mt-3 ykb-alert ykb-alert-warning">{draftError}</div> : null}
@@ -232,42 +234,42 @@ export function ServiceProviderServices() {
 								<div className="mt-4 grid grid-cols-1 gap-4">
 									<div>
 										<label className="block text-sm font-semibold text-primary mb-1" htmlFor="serviceName">
-											Service name
+											{t('provider.serviceNameLabel')}
 										</label>
 										<input
 											id="serviceName"
 											className="ykb-field"
 											value={draft.name}
 											onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
-											placeholder="e.g. Plumbing"
+											placeholder={t('provider.placeholderServiceName')}
 											disabled={isSaving}
 										/>
 									</div>
 
 									<div>
 										<label className="block text-sm font-semibold text-primary mb-1" htmlFor="servicePrice">
-											Price
+											{t('provider.servicePriceField')}
 										</label>
 										<input
 											id="servicePrice"
 											className="ykb-field"
 											value={draft.price}
 											onChange={(e) => setDraft((prev) => ({ ...prev, price: e.target.value }))}
-											placeholder="e.g. 10,000 RWF"
+											placeholder={t('provider.placeholderPrice')}
 											disabled={isSaving}
 										/>
 									</div>
 
 									<div>
 										<label className="block text-sm font-semibold text-primary mb-1" htmlFor="serviceDescription">
-											Description
+											{t('provider.serviceDescriptionLabel')}
 										</label>
 										<textarea
 											id="serviceDescription"
 											className="ykb-field min-h-[110px]"
 											value={draft.description}
 											onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))}
-											placeholder="Describe what you offer, what is included, and any limits."
+											placeholder={t('provider.placeholderDescription')}
 											disabled={isSaving}
 										/>
 									</div>
@@ -278,14 +280,14 @@ export function ServiceProviderServices() {
 											disabled={isSaving}
 											className="ykb-button-outline"
 										>
-											Cancel
+											{t('provider.cancel')}
 										</button>
 										<button
 											onClick={saveDraft}
 											disabled={isSaving}
 											className="ykb-button-primary"
 										>
-											{isSaving ? 'Saving…' : 'Save service'}
+											{t('provider.saveService')}
 										</button>
 									</div>
 								</div>
@@ -293,8 +295,8 @@ export function ServiceProviderServices() {
 						) : null}
 
 						<section className="ykb-card">
-							<div className="text-xs font-semibold uppercase tracking-[0.22em] text-textSecondary">Your list</div>
-							<h2 className="mt-2 text-xl font-semibold text-primary">Services</h2>
+							<div className="text-xs font-semibold uppercase tracking-[0.22em] text-textSecondary">{t('provider.yourList')}</div>
+							<h2 className="mt-2 text-xl font-semibold text-primary">{t('provider.services')}</h2>
 
 							<div className="mt-4">
 								{offerings.length > 0 ? (
@@ -307,7 +309,7 @@ export function ServiceProviderServices() {
 														{item.description ? (
 															<div className="mt-1 text-sm text-textSecondary whitespace-pre-wrap">{item.description}</div>
 														) : (
-															<div className="mt-1 text-sm text-textSecondary">No description yet.</div>
+															<div className="mt-1 text-sm text-textSecondary">{t('provider.noDescriptionYet')}</div>
 														)}
 													</div>
 													<div className="shrink-0 flex flex-col items-start sm:items-end gap-2">
@@ -318,14 +320,14 @@ export function ServiceProviderServices() {
 																disabled={isSaving}
 																className="ykb-button-outline"
 															>
-																Edit
+																{t('provider.edit')}
 															</button>
 															<button
 																onClick={() => deleteOffering(index)}
 																disabled={isSaving}
 																className="ykb-button-outline"
 															>
-																Delete
+																{t('provider.delete')}
 															</button>
 														</div>
 													</div>
@@ -334,7 +336,7 @@ export function ServiceProviderServices() {
 										))}
 									</div>
 								) : (
-									<div className="ykb-alert ykb-alert-info">No services listed yet.</div>
+									<div className="ykb-alert ykb-alert-info">{t('provider.noServicesYet')}</div>
 								)}
 							</div>
 						</section>

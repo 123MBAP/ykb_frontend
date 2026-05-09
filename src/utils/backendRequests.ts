@@ -32,6 +32,12 @@ export type BackendRequest = {
   status: string;
   adminNotes?: string | null;
   customerNotes?: string | null;
+  customerResolvedAt?: string | null;
+  providerResolvedAt?: string | null;
+  adminResolvedAt?: string | null;
+  adminConfirmedAt?: string | null;
+  requiresAdminConfirmation?: boolean;
+  rating?: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -155,6 +161,35 @@ export async function addMyBackendRequestNote(requestId: string, note: string): 
         ...getBackendAuthHeaders(),
       },
       body: JSON.stringify({ note }),
+    });
+  } catch {
+    throw new BackendAuthError('Could not reach the backend. Is it running?', 0);
+  }
+
+  if (!res.ok) {
+    throw new BackendAuthError(await readApiErrorMessage(res), res.status);
+  }
+
+  const json = (await res.json()) as { request?: BackendRequest };
+  if (!json?.request?.id) {
+    throw new BackendAuthError('Invalid response from backend.');
+  }
+
+  return json.request;
+}
+
+export async function rateBackendRequest(requestId: string, rating: number): Promise<BackendRequest> {
+  requireBackendSession();
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/requests/${encodeURIComponent(requestId)}/rate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getBackendAuthHeaders(),
+      },
+      body: JSON.stringify({ rating }),
     });
   } catch {
     throw new BackendAuthError('Could not reach the backend. Is it running?', 0);

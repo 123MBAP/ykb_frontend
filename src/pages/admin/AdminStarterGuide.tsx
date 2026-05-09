@@ -76,24 +76,32 @@ function GroupPicker(props: {
   return (
     <div>
       <label className="block text-sm font-semibold text-primary mb-2">Group</label>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="space-y-3">
         {GROUP_OPTIONS.map((opt) => {
           const selected = value === opt.value;
           return (
-            <button
+            <label
               key={opt.value}
-              type="button"
-              onClick={() => onChange(opt.value)}
               className={
-                'rounded-xl border px-4 py-3 text-left transition-colors ' +
+                'flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ' +
                 (selected
                   ? 'border-secondary/40 bg-secondary/5'
                   : 'border-border bg-white hover:bg-surface/60 hover:border-secondary/30')
               }
             >
-              <div className="text-sm font-bold text-primary">{opt.title}</div>
-              <div className="mt-1 text-xs text-textSecondary">{opt.description}</div>
-            </button>
+              <input
+                type="radio"
+                name="starter-guide-group"
+                value={opt.value}
+                checked={selected}
+                onChange={() => onChange(opt.value)}
+                className="mt-1 h-4 w-4 text-secondary focus:ring-secondary"
+              />
+              <div>
+                <div className="text-sm font-bold text-primary">{opt.title}</div>
+                <div className="mt-1 text-xs text-textSecondary">{opt.description}</div>
+              </div>
+            </label>
           );
         })}
       </div>
@@ -269,12 +277,15 @@ export function AdminStarterGuide() {
 
   return (
     <main className="pt-16">
-      <section className=" border-b border-primary py-8">
+      <section className="border-b border-border bg-white py-8">
         <div className="ykb-container">
-          <h1 className="text-3xl md:text-4xl font-serif font-bold text-primary mb-2">Starter Guide Categories</h1>
-          <p className="text-base text-gray-400">
-            Define categories with optional subcategories like clinics, hospitals, pharmacies, or leave them as single categories like transport apps.
-          </p>
+          <div className="max-w-2xl">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-textSecondary">Manage starter guide content</p>
+            <h1 className="text-3xl font-semibold text-primary md:text-4xl">Starter Guide Categories</h1>
+            <p className="mt-2 max-w-xl text-base leading-relaxed text-textSecondary">
+              Define categories with optional subcategories like clinics, hospitals, pharmacies, or leave them as single categories like transport apps.
+            </p>
+          </div>
         </div>
       </section>
 

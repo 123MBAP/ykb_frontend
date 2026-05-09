@@ -174,7 +174,8 @@ const [showCreateModal, setShowCreateModal] = useState(false);
 		if (!phone.trim() || phone.trim().length < 5) return 'Phone number is required.';
 		const langs = normalizeLanguageIds(selectedLanguageIds);
 		if (langs.length === 0) return 'Select at least one language.';
-		if (profileImageUrl.trim() && !isValidUrl(profileImageUrl.trim())) return 'Profile image URL must be a valid URL.';
+		if (!profileImageUrl.trim()) return 'Profile image URL is required.';
+		if (!isValidUrl(profileImageUrl.trim())) return 'Profile image URL must be a valid URL.';
 		if (profileImagePublicId.trim() && profileImagePublicId.trim().length < 1) return 'Profile image publicId is invalid.';
 		return null;
 	};
@@ -397,17 +398,15 @@ const deleteTranslator = async (id: number) => {
 
         return (
                 <main className="min-h-screen bg-white pt-16 text-gray-900">
-                        <section className="relative overflow-hidden border-b border-border bg-white py-10">
-                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.06),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(212,175,55,0.08),_transparent_30%)]" />
-                                <div className="absolute left-1/2 top-6 h-56 w-56 -translate-x-1/2 rounded-full bg-secondary/10 blur-3xl" />
-                                <div className="ykb-container relative text-center">
-                                        <h1 className="mt-5 text-3xl font-bold tracking-tight text-primary md:text-4xl lg:text-5xl">
-                                                <span className="block">Manage</span>
-                                                <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Translators</span>
-                                        </h1>
-<p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-textSecondary">
-                                                Create and manage translators and assign them to languages.
-                                        </p>
+                        <section className="border-b border-border bg-white py-8">
+                                <div className="ykb-container">
+                                        <div className="max-w-2xl">
+                                                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-textSecondary">Manage translation services</p>
+                                                <h1 className="text-3xl font-semibold text-primary md:text-4xl">Translator Languages</h1>
+                                                <p className="mt-2 max-w-xl text-base leading-relaxed text-textSecondary">
+                                                        Create languages and set dynamic prices like hour/week/day.
+                                                </p>
+                                        </div>
                                 </div>
                         </section>
 
@@ -708,7 +707,7 @@ const deleteTranslator = async (id: number) => {
 
                                                                 <div>
                                                                         <label className="mb-1.5 block text-sm font-semibold text-primary" htmlFor="translator-image">
-                                                                                Profile Image URL
+                                                                                Profile Image URL *
                                                                         </label>
                                                                         <input
                                                                                 id="translator-image"
